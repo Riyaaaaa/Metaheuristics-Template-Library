@@ -1,2 +1,2 @@
 # Metaheuristic-Library
-Metaheuristic Library / supported GA,  neural network, and Simulated Annealing.
+Metaheuristic Library / supported Genetic Algorithm, Neural Network, and Simulated Annealing.
