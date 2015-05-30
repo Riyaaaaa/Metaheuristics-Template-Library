@@ -12,23 +12,24 @@
 #include "GABase.hpp"
 #include <random>
 #include <algorithm>
-#include <iostream>
-#include <type_traits>
 
+/* To check Individual Class whether or not it extend GA_Base Class*/
 template<class T,int N_I>
 class _GA_Solver;
 
 template<bool is_base,class T,int N_I>
-struct DUMMY;
+struct Dummy;
 
 template<class T,int N_I>
-struct DUMMY<true,T,N_I>{
+struct Dummy<true,T,N_I>{
     using type = _GA_Solver<T,N_I>;
 };
 
 template<class T,int N_I>
-using GA_Solver = typename DUMMY<std::is_base_of<GA_Base<T,typename T::auxType>,T>::value,T,N_I>::type;
+using GA_Solver = typename Dummy<std::is_base_of<GA_Base<T,typename T::auxType>,T>::value,T,N_I>::type;
 
+
+//Don't use insead of using template alias GA_Solver
 template<class T,int N_I>
 class _GA_Solver{
 public:
@@ -67,7 +68,6 @@ T* _GA_Solver<T,N_I>::select(){
     for(int i=0;i<_population.size();i++){
         if(_population[i]->getProbability() > rnd){
             individual = _population[i];
-            //std::cout << "selected" << i << std::endl;
             break;
         }
     }

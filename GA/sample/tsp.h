@@ -17,10 +17,10 @@ class tsp_individual : public GA_Base<tsp_individual,std::vector<cv::Point>>{
 public:
     using DNA = std::vector<int>;
 
-    tsp_individual* mutation() override;
-    tsp_individual* inversion() override;
-    tsp_individual* cross_over(tsp_individual*) override;
-    int calcEvalution(std::vector<cv::Point>& aux) override;
+    tsp_individual* mutation();
+    tsp_individual* inversion();
+    tsp_individual* cross_over(tsp_individual*);
+    int calcEvalution(std::vector<cv::Point>& aux);
     
     DNA translateToDnaPhenotypicOrdinal(DNA);
     DNA translateToDnaPhenotypicTrait(DNA);

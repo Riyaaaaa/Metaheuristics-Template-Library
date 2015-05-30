@@ -12,19 +12,20 @@
 #include <vector>
 #include <array>
 
-template<typename U,typename T>
-class GA_Base{ //Interface class for GA
+template<typename T,typename U>
+class GA_Base{ //Interface Template class for GA
 public:
-    using auxType = T;
+    using auxType = U;
     
-    virtual U* mutation()=0;
-    virtual U* inversion()=0;
-    //virtual GA_Base* select(std::vector<GA_Base*>&)=0;
-    virtual U* cross_over(U*)=0;
-    virtual int calcEvalution(T& aux)=0;
+    T* mutation(){ static_cast<T*>(this)->mutation(); }
+    T* inversion(){ static_cast<T*>(this)->inversion(); }
+ 
+    T* crossOver(T*){ static_cast<T*>(this)->crossOver(); }
     
-    bool operator<(const U* rhs){return this->_evalution < rhs->_evalution;}
-    bool operator>(const U* rhs){return this->_evalution > rhs->_evalution;}
+    int calcEvalution(U& aux){ static_cast<T*>(this)->calcEvalution(); }
+    
+    bool operator<(const T* rhs){return this->_evalution < rhs->_evalution;}
+    bool operator>(const T* rhs){return this->_evalution > rhs->_evalution;}
 
     enum class DNA_DISPLACEMENT_LISTS{
         MUTATION=0,
@@ -39,9 +40,7 @@ public:
     
     void setProbability(double prob){probability = prob;}
     double getProbability(){return probability;}
-    
-    virtual ~GA_Base()=default;
-    
+
 protected:
     int _evalution;
     double probability;
