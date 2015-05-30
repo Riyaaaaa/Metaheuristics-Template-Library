@@ -6,8 +6,8 @@
 //  Copyright (c) 2015年 Riya.Liel. All rights reserved.
 //
 
-#ifndef __opencv_test__Structure__
-#define __opencv_test__Structure__
+#ifndef __GA_GA_Base__
+#define __GA_GA_Base__
 
 #include <vector>
 #include <array>

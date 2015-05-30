@@ -6,8 +6,8 @@
 //  Copyright (c) 2015年 Riya.Liel. All rights reserved.
 //
 
-#ifndef __Procon26__GASolver__
-#define __Procon26__GASolver__
+#ifndef __GA_GA_Solver__
+#define __GA_GA_Solver__
 
 #include "GABase.hpp"
 #include <random>

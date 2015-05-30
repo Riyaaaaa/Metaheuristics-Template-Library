@@ -6,8 +6,8 @@
 //  Copyright (c) 2014年 Riya.Liel. All rights reserved.
 //
 
-#ifndef opencv_test_reference_list_h
-#define opencv_test_reference_list_h
+#ifndef __GA_reference_list__
+#define __GA_reference_list__
 
 #include <stdio.h>
 #include "opencv/cv.h"       //cv.hを読み込む

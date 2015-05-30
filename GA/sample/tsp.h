@@ -6,8 +6,8 @@
 //  Copyright (c) 2015年 Riya.Liel. All rights reserved.
 //
 
-#ifndef __opencv_test__tsp__
-#define __opencv_test__tsp__
+#ifndef __GA_tsp__
+#define __GA_tsp__
 
 #include"GABase.hpp"
 #include"reference_list.h"
