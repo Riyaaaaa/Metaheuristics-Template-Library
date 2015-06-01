@@ -22,14 +22,14 @@ public:
     tsp_individual* cross_over(tsp_individual*);
     int calcEvalution(std::vector<cv::Point>& aux);
     
-    DNA translateToDnaPhenotypicOrdinal(DNA);
-    DNA translateToDnaPhenotypicTrait(DNA);
+    static DNA translateToDnaPhenotypicOrdinal(const DNA);
+    static DNA translateToDnaPhenotypicTrait(const DNA);
     
     void setDNA(DNA& _dna){_phenotypic_trait=_dna;}
     void setDNA(DNA&& _dna){_phenotypic_trait=_dna;}
     
     //debug
-    DNA& getPhenotypic(){return _phenotypic_trait;}
+    const DNA& getPhenotypic()const{return _phenotypic_trait;}
     
 private:
     

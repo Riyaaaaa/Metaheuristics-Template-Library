@@ -92,7 +92,7 @@ tsp_individual* tsp_individual::inversion(){
     return new_individual;
 }
 
-tsp_individual::DNA tsp_individual::translateToDnaPhenotypicOrdinal(DNA trait){
+tsp_individual::DNA tsp_individual::translateToDnaPhenotypicOrdinal(const DNA trait){
     DNA ordinal;
     DNA tmp;
     
@@ -110,7 +110,7 @@ tsp_individual::DNA tsp_individual::translateToDnaPhenotypicOrdinal(DNA trait){
     return ordinal;
 }
 
-tsp_individual::DNA tsp_individual::translateToDnaPhenotypicTrait(DNA ordinal){
+tsp_individual::DNA tsp_individual::translateToDnaPhenotypicTrait(const DNA ordinal){
     DNA trait;
     DNA tmp;
     
@@ -170,8 +170,7 @@ int tsp_individual::calcEvalution(std::vector<cv::Point>& city_list){
     evalution+= cv::norm(city_list[phenotypic_ordinal.back()]-city_list[phenotypic_ordinal[0]]);
 
     _evalution = std_eval - evalution;
-    _evalution = _evalution > 0 ? _evalution : 0;
-    return _evalution;
+    return _evalution > 0 ? _evalution : 0;;
 }
 
 
