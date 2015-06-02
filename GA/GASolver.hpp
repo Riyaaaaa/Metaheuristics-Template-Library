@@ -116,6 +116,20 @@ void _GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler>::populationSe
     std::sort(_population.begin(), _population.end(), [](_Individual* lhs,_Individual* rhs){return lhs->getEvalution() > rhs->getEvalution();}); //descending sort
     
     _scaler(_population,2);
+    
+    double sum=0;
+    double sumProbablity=0;
+    
+    for(_Individual* individual : _population){
+        sum+=individual->getEvalution();
+    }
+    
+    if(sum == 0)throw "all individuals are same DNA.";
+    
+    for(_Individual* individual : _population){
+        individual->setProbability(individual->getEvalution()/sum + sumProbablity);
+        sumProbablity = individual->getProbability();
+    }
 }
 
 #endif /* defined(__Procon26__GASolver__) */
