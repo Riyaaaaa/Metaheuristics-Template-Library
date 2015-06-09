@@ -66,11 +66,4 @@ struct PowerScaling{
     }
 };
 
-template<typename T>
-std::vector<std::pair<std::pair<int,int>,std::pair<int,int>>> enumrateSubtour(std::vector<T> a,std::vector<T> b){
-    for(int i=0;i<a.size();i++){
-        
-    }
-}
-
 #endif

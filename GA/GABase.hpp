@@ -18,7 +18,6 @@ public:
     using auxType = U;
     
     T* mutation(){ static_cast<T*>(this)->mutation(); }
-    T* inversion(){ static_cast<T*>(this)->inversion(); }
  
     T* crossOver(T*){ static_cast<T*>(this)->crossOver(); }
     

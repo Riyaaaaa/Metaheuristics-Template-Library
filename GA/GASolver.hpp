@@ -20,14 +20,15 @@
                      Evalution scaler : Power Scaling Algorithm. */
 template <  class _Individual,int _NumberOfIndividual,
             class _Selector = RouletteSelect<_Individual>,
-            class _Scaler = PowerScaling<_Individual> >
+            class _Scaler   = PowerScaling  <_Individual> >
 class _GA_Solver;
 
 /* To check Individual Class whether or not it extend GA_Base Class*/
 
 template<class _Individual,int _NumberOfIndividual>
 using GA_Solver = typename std::enable_if<
-                            std::is_base_of<GA_Base<_Individual,typename _Individual::auxType>,_Individual>::value,
+                            std::is_base_of<GA_Base<_Individual,typename _Individual::auxType>,
+                                            _Individual>::value,
                             _GA_Solver<_Individual,_NumberOfIndividual> > ::type;
 
 
@@ -40,8 +41,8 @@ public:
     
     void populationSettings();
 
+    const double PROBABILITY_OF_CROSSOVER=1.0;
     const double PROBABILITY_OF_MUTATION=0.01;
-    const double PROBABILITY_OF_INVERSION=0.01;
     
     const std::vector<_Individual*>& getPopulation(){return _population;}
     
@@ -59,11 +60,13 @@ private:
 };
 
 template<typename _Individual,int _NumberOfIndividual,class _Selector,class _Scaler>
-_GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler>::_GA_Solver(std::vector<_Individual*> solve_targets){
-    _population = solve_targets;
-    _mt = std::mt19937(_rnd());
-    _distribution = std::uniform_real_distribution<double>(0,1);
+_GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler>::_GA_Solver(std::vector<_Individual*> solve_targets):
+    _population(solve_targets),
+    _mt(std::mt19937(_rnd())),
+    _distribution(std::uniform_real_distribution<double>(0,1))
+{
 }
+
 
 template<class _Individual,int _NumberOfIndividual,class _Selector,class _Scaler>
 _Individual* _GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler>::solveAnswer(int max_age){
@@ -78,13 +81,22 @@ _Individual* _GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler>::solv
         while(new_poplation.size() < _NumberOfIndividual){
             _Individual *father = _selector(std::move(_population)),
             *mother = _selector(std::move(_population));
+            
             new_poplation.push_back(father->cross_over(mother));
+            
             if(_distribution(_mt) < PROBABILITY_OF_MUTATION){
                 new_poplation.push_back(_population.back()->mutation());
             }
-            else if(_distribution(_mt) < PROBABILITY_OF_INVERSION){
-                new_poplation.push_back(_population.back()->inversion());
-            }
+            
+            new_poplation.back()->setEvalution(new_poplation.back()->calcEvalution(_aux));
+            
+            /*if(new_poplation.end() == std::find_if(new_poplation.begin(),new_poplation.end(),
+                                                   [&](_Individual* rhs){
+                                                       return new_poplation.back()->getEvalution() == rhs->getEvalution();
+                                                   }
+                                                   )
+               )
+                new_poplation.pop_back();*/
         }
         
         _population.erase(_population.begin());
