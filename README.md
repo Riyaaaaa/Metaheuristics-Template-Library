@@ -9,6 +9,8 @@ support the following algorithm
 
 1.Genetic Algorithm
 
+2.Simulated Annealing
+
 ## Requirement
 C++11
 
