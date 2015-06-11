@@ -11,10 +11,26 @@
 
 #include<cmath>
 
-template<class _T,int _STime=1000,int _ETime=1,int _Schedule=99>
-class SA_Solver{
+/* Prototype Definition */
+/* Setting default template for arguments algorithm function objects */
+/* default argments: Individual selector : Roulette Select Algorithm.
+ Evalution scaler : Power Scaling Algorithm. */
+template<class _T,int _STime=100,int _ETime=1,int _Schedule=99>
+class _SA_Solver;
+
+/* To check Individual Class whether or not it extend GA_Base Class*/
+
+template<class _T,int _STime=100,int _ETime=1,int _Schedule=99>
+using SA_Solver = typename std::enable_if< std::is_base_of<SA_Base<_T,typename _T::auxType,typename _T::stateType>,
+                                                            _T
+                                                          >::value,
+                                            _SA_Solver<_T,_STime,_ETime,_Schedule>
+                                          > ::type;
+
+template<class _T,int _STime,int _ETime,int _Schedule>
+class _SA_Solver{
 public:
-    SA_Solver(_T target):_target(target){}
+    _SA_Solver(_T target):_target(target){}
     typename _T::stateType solveAnswer();
     void setAux(typename _T::auxType& aux){_aux = aux;}
 private:
@@ -27,7 +43,7 @@ private:
 };
 
 template<class _T,int _STime,int _ETime,int _Schedule>
-typename _T::stateType SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
+typename _T::stateType _SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
     std::random_device _rnd;
     std::mt19937 _mt(_rnd());
     std::uniform_real_distribution<double> _distribution(0,1);
@@ -36,10 +52,8 @@ typename _T::stateType SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
     int best_eval=0, old_eval=0;
     typename _T::stateType old = _target.getState();
     typename _T::stateType best_state;
-    int count=0;
     
     while(current_time >= _ETime){
-        count++;
         _target.turnState();
         int next_eval = _target.calcEvalution(_aux);
         
