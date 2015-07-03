@@ -24,12 +24,13 @@ template <  class _Individual,int _NumberOfIndividual,
 class _GA_Solver;
 
 /* To check Individual Class whether or not it extend GA_Base Class*/
-
-template<class _Individual,int _NumberOfIndividual>
+template <  class _Individual,int _NumberOfIndividual,
+            class _Selector = RouletteSelect<_Individual>,
+            class _Scaler   = PowerScaling  <_Individual> >
 using GA_Solver = typename std::enable_if<
                             std::is_base_of<GA_Base<_Individual,typename _Individual::auxType>,
                                             _Individual>::value,
-                            _GA_Solver<_Individual,_NumberOfIndividual> > ::type;
+                            _GA_Solver<_Individual,_NumberOfIndividual,_Selector,_Scaler> > ::type;
 
 
 //Don't use insead of using template alias GA_Solver
@@ -41,8 +42,8 @@ public:
     
     void populationSettings();
 
-    const double PROBABILITY_OF_CROSSOVER=1.0;
-    const double PROBABILITY_OF_MUTATION=0.01;
+    static constexpr double PROBABILITY_OF_CROSSOVER=1.0;
+    static constexpr double PROBABILITY_OF_MUTATION=0.01;
     
     const std::vector<_Individual*>& getPopulation(){return _population;}
     

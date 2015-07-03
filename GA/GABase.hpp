@@ -17,22 +17,16 @@ class GA_Base{ //Interface Template class for GA
 public:
     using auxType = U;
     
-    T* mutation(){ static_cast<T*>(this)->mutation(); }
- 
-    T* crossOver(T*){ static_cast<T*>(this)->crossOver(); }
+    /* Functions that you must define */
     
-    int calcEvalution(U& aux){ static_cast<T*>(this)->calcEvalution(); }
+    T* mutation(){ return static_cast<T*>(this)->mutation(); }
+    T* crossOver(T* t){ return static_cast<T*>(this)->crossOver(t); }
+    int calcEvalution(U& aux){ return static_cast<T*>(this)->calcEvalution(); }
+    
+    /* -------- */
     
     bool operator<(const T* rhs){return this->_evalution < rhs->_evalution;}
     bool operator>(const T* rhs){return this->_evalution > rhs->_evalution;}
-
-    enum class DNA_DISPLACEMENT_LISTS{
-        MUTATION=0,
-        INVERSION,
-    };
-    static const int NUMBER_OF_DISPLACEMENT=2;
-    
-    void setDistribution(std::array<double, NUMBER_OF_DISPLACEMENT> dist){_evolution_distribution = dist;}
     
     void setEvalution(int eval){_evalution = eval;}
     int getEvalution(){return _evalution;}
@@ -43,7 +37,6 @@ public:
 protected:
     int _evalution;
     double probability;
-    std::array<double, NUMBER_OF_DISPLACEMENT> _evolution_distribution;
 };
 
 

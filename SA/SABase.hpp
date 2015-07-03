@@ -17,13 +17,14 @@ class SA_Base{ //Interface Template class for SA
 public:
     
     SA_Base(_StateType state):_state(state){};
-    
+
     using auxType = _AuxType;
     using stateType = _StateType;
     
-    T& turnState(){ static_cast<T*>(this)->turnState(); }
+    T& turnState(auxType aux){ static_cast<T*>(this)->turnState(aux); }
+    T& initState(auxType aux){ static_cast<T*>(this)->initState(aux); }
     
-    int calcEvalution(_AuxType& aux){ static_cast<T*>(this)->calcEvalution(); }
+    int calcEvalution(auxType& aux){ static_cast<T*>(this)->calcEvalution(); }
     
     bool operator<(const T* rhs){return this->_evalution < rhs->_evalution;}
     bool operator>(const T* rhs){return this->_evalution > rhs->_evalution;}
