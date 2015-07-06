@@ -10,8 +10,8 @@
 #define __GA_reference_list__
 
 #include <stdio.h>
-#include "opencv/cv.h"       //cv.hを読み込む
-#include "opencv/highgui.h"  //highgui.hを読み込む<br /><br />int main(int argc, const char * argv[])
+#include "opencv/cv.h"
+#include "opencv/highgui.h"
 
 using namespace std;
 typedef vector< vector<cv::Point> >	Type_ApproxContourContainer;

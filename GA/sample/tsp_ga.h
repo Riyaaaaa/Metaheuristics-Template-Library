@@ -18,8 +18,10 @@ public:
     using DNA = std::vector<int>;
 
     tsp_individual* mutation();
-    tsp_individual* cross_over(tsp_individual*);
+    tsp_individual* pmx_cross_over(tsp_individual*);
     tsp_individual* cse_x_cross_over(tsp_individual*);
+    tsp_individual* cross_over(tsp_individual* source);
+    
     int calcEvalution(std::vector<cv::Point>& aux);
     
     static DNA translateToDnaPhenotypicOrdinal(const DNA);

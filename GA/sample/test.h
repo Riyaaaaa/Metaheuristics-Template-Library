@@ -1,16 +1,19 @@
 #include<iostream>
 #include <random>
-#include"tsp.h"
+#include"tsp_ga.h"
 #include "GASolver.hpp"
 
-int main(){
+#ifndef __tsp_ga__
+#define __tsp_ga__
+
+void test_ga(){
     std::random_device rnd;
     std::mt19937 mt(rnd());
     std::uniform_int_distribution<int> distiribution(0,500);
     std::vector<cv::Point> city_list;
     std::vector<tsp_individual*> population;
     int count=1;
-    const int max_age=10,city_size=100,individual_size=city_size;
+    const int max_age=1000,city_size=100,individual_size=city_size;
     
     
      for(int i=0;i<city_size;i++){
@@ -33,6 +36,19 @@ int main(){
     GA_Solver<tsp_individual,individual_size> solver(population);
     solver.setAux(city_list);
     
+    auto start = std::chrono::system_clock::now();
+    
+    solver.solveAnswer(max_age);
+    
+    auto end = std::chrono::system_clock::now();
+    
+    auto diff = end - start;
+    std::cout << "elapsed time = "
+    << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
+    << " msec."
+    << std::endl;
+    
+    /*
     solver.populationSettings();
     tsp_individual::DNA root = tsp_individual::translateToDnaPhenotypicOrdinal(solver.getPopulation().front()->getPhenotypic());
     while(true){
@@ -69,9 +85,10 @@ int main(){
         }
         count++;
         
-        tsp_individual* answer = dynamic_cast<tsp_individual*>(solver.solveAnswer(max_age));
+        tsp_individual* answer = solver.solveAnswer(max_age);
         root =  answer->translateToDnaPhenotypicOrdinal(answer->getPhenotypic());
     }
-    
-    return 0;
+     */
 }
+
+#endif

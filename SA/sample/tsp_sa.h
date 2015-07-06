@@ -16,7 +16,8 @@ class tsp_annealing : public SA_Base<tsp_annealing, std::vector<cv::Point> ,std:
 public:
     tsp_annealing(std::vector<int> state):SA_Base<tsp_annealing, std::vector<cv::Point> ,std::vector<int> >(state){};
 
-    tsp_annealing& turnState();
+    void turnState(auxType);
+    void initState(auxType);
     int calcEvalution(std::vector<cv::Point>& city_list);
     
 };

@@ -7,7 +7,7 @@ template<typename T>
 std::vector<std::pair<std::pair<int,int>,std::pair<int,int>>>
 enumrateSubtour(std::vector<T> source,std::vector<T> target);
 
-tsp_individual* tsp_individual::cross_over(tsp_individual* source){
+tsp_individual* tsp_individual::pmx_cross_over(tsp_individual* source){
     std::random_device rnd;
     std::mt19937 mt(rnd());
     std::uniform_int_distribution<int> distribution(0,static_cast<int>(_phenotypic_trait.size()-1));
@@ -95,6 +95,27 @@ tsp_individual* tsp_individual::cse_x_cross_over(tsp_individual* source){
     }
     
     child->_phenotypic_trait = translateToDnaPhenotypicTrait(child->_phenotypic_trait);
+    
+    return child;
+}
+
+tsp_individual* tsp_individual::cross_over(tsp_individual* source){
+    tsp_individual* child = new tsp_individual;
+    
+    DNA source_dna = source->_phenotypic_trait;
+    DNA parent_dna = _phenotypic_trait;
+    
+    std::random_device rnd;
+    std::mt19937 mt(rnd());
+    std::uniform_int_distribution<int> distribution(0,static_cast<int>(_phenotypic_trait.size()-1));
+    
+    int cross_point = distribution(mt);
+    
+    for(int i=cross_point; i<_phenotypic_trait.size(); i++){
+        source_dna[i] = parent_dna[i];
+    }
+    
+    child->setDNA(source_dna);
     
     return child;
 }

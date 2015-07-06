@@ -29,8 +29,8 @@ using SA_Solver = typename std::enable_if< std::is_base_of<SA_Base<_T,typename _
 template<class _T,int _STime,int _ETime,int _Schedule>
 class _SA_Solver{
 public:
-    _SA_Solver(_T target):_target(target){}
-    _T solveAnswer();
+    _SA_Solver(_T& target):_target(target){}
+    typename _T::stateType solveAnswer();
     void setAux(typename _T::auxType& aux){_aux = aux;}
 private:
     
@@ -38,11 +38,11 @@ private:
         return e1 <= e2 ? 1.0 : exp( (e1-e2)/t );
     }
     typename _T::auxType _aux;
-    _T _target;
+    _T& _target;
 };
 
 template<class _T,int _STime,int _ETime,int _Schedule>
-_T _SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
+typename _T::stateType _SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
     std::random_device _rnd;
     std::mt19937 _mt(_rnd());
     std::uniform_real_distribution<double> _distribution(0,1);
@@ -73,7 +73,7 @@ _T _SA_Solver<_T,_STime,_ETime,_Schedule>::solveAnswer(){
     }
     _target = best;
     
-    return _target;
+    return _target.getState();
 }
 
 #endif

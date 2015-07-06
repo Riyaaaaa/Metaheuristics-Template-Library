@@ -8,7 +8,7 @@
 
 #include "tsp_sa.h"
 
-tsp_annealing& tsp_annealing::turnState(){
+void tsp_annealing::turnState(auxType){
     std::random_device rnd;
     std::mt19937 mt(rnd());
     std::uniform_real_distribution<double> distribution(0,_state.size()-1);
@@ -19,8 +19,17 @@ tsp_annealing& tsp_annealing::turnState(){
     for(int i=cross_point1; i<=cross_point1 + (cross_point2-cross_point1)/2; i++){
         std::swap(_state[i],_state[cross_point1+cross_point2-i]);
     }
+}
+
+void tsp_annealing::initState(auxType city_list){
+    size_t city_size = city_list.size();
+    _state.resize(city_size);
     
-    return *this;
+    for(int i=0;i<city_size;i++){
+        _state[i] = i;
+    }
+    
+    std::random_shuffle(_state.begin(), _state.end());
 }
 
 int tsp_annealing::calcEvalution(std::vector<cv::Point> &city_list){

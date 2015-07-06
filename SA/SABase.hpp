@@ -21,8 +21,8 @@ public:
     using auxType = _AuxType;
     using stateType = _StateType;
     
-    T& turnState(auxType aux){ static_cast<T*>(this)->turnState(aux); }
-    T& initState(auxType aux){ static_cast<T*>(this)->initState(aux); }
+    void turnState(auxType aux){ static_cast<T*>(this)->turnState(aux); }
+    void initState(auxType aux){ static_cast<T*>(this)->initState(aux); }
     
     int calcEvalution(auxType& aux){ static_cast<T*>(this)->calcEvalution(); }
     
