@@ -99,10 +99,10 @@ tsp_individual* tsp_individual::cse_x_cross_over(tsp_individual* source){
     return child;
 }
 
-tsp_individual* tsp_individual::cross_over(tsp_individual* source){
+GA_Base* tsp_individual::crossover(GA_Base* source){
     tsp_individual* child = new tsp_individual;
     
-    DNA source_dna = source->_phenotypic_trait;
+    DNA source_dna = dynamic_cast<tsp_individual*>(source)->_phenotypic_trait;
     DNA parent_dna = _phenotypic_trait;
     
     std::random_device rnd;
@@ -120,7 +120,7 @@ tsp_individual* tsp_individual::cross_over(tsp_individual* source){
     return child;
 }
 
-tsp_individual* tsp_individual::mutation(){
+GA_Base* tsp_individual::mutation(){
     tsp_individual* new_individual = new tsp_individual;
     DNA phenotypic_ordinal = translateToDnaPhenotypicOrdinal(_phenotypic_trait);
     
@@ -202,21 +202,22 @@ tsp_individual* makeTspIndividual(int number_of_city){
     return new_indivisual;
 }
 
-int tsp_individual::calcEvalution(std::vector<cv::Point>& city_list){
+int tsp_individual::calcEvalution(void* aux){
+    std::vector<cv::Point>* city_list = reinterpret_cast< std::vector<cv::Point>* >(aux);
     int evalution=0,std_eval=0;
     
     
-    for(int i=0;i<city_list.size();i++){
-        std_eval += cv::norm(cv::Point(0,0)-city_list[i]);
+    for(int i=0;i<city_list->size();i++){
+        std_eval += cv::norm(cv::Point(0,0)-(*city_list)[i]);
     }
     
     
     DNA phenotypic_ordinal = translateToDnaPhenotypicOrdinal(_phenotypic_trait);
     
-    for(int i=0;i<city_list.size()-1;i++){
-        evalution+= cv::norm(city_list[phenotypic_ordinal[i]]-city_list[phenotypic_ordinal[i+1]]);
+    for(int i=0;i<city_list->size()-1;i++){
+        evalution+= cv::norm((*city_list)[phenotypic_ordinal[i]]-(*city_list)[phenotypic_ordinal[i+1]]);
     }
-    evalution+= cv::norm(city_list[phenotypic_ordinal.back()]-city_list[phenotypic_ordinal[0]]);
+    evalution+= cv::norm((*city_list)[phenotypic_ordinal.back()]-(*city_list)[phenotypic_ordinal[0]]);
 
     _evalution = std_eval - evalution;
     return _evalution > 0 ? _evalution : 0;

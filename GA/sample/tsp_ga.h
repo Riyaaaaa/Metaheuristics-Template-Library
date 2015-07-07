@@ -13,16 +13,16 @@
 #include"reference_list.h"
 #include <vector>
 
-class tsp_individual : public GA_Base<tsp_individual,std::vector<cv::Point>>{
+class tsp_individual : public GA_Base{
 public:
     using DNA = std::vector<int>;
 
-    tsp_individual* mutation();
+    GA_Base* mutation()override;
     tsp_individual* pmx_cross_over(tsp_individual*);
     tsp_individual* cse_x_cross_over(tsp_individual*);
-    tsp_individual* cross_over(tsp_individual* source);
+    GA_Base* crossover(GA_Base* source)override;
     
-    int calcEvalution(std::vector<cv::Point>& aux);
+    int calcEvalution(void* aux)override;
     
     static DNA translateToDnaPhenotypicOrdinal(const DNA);
     static DNA translateToDnaPhenotypicTrait(const DNA);
