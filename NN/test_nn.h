@@ -13,7 +13,12 @@
 
 void test_nn(){
     NNSolver<3, 1, 2> a;
-    a.solveAnswer({1,1,1});
+    auto output = a.solveAnswer({1,0,1});
+    
+    for(auto& unit: output){
+        std::cout << unit.output(sigmoid()) << ' ';
+    }
+    std::cout << std::endl;
 }
 
 #endif
