@@ -15,11 +15,11 @@
 /* Prototype Definition */
 /* Setting default template for arguments for cooling schedule */
 /* default argments: _Stime : initial of time / _Etime : end of time / _Schedule : percent for cooling schedule */
-template<class _T,int _STime=100,int _ETime=1,int _Schedule=90>
+template<class _T,int _STime=1000,int _ETime=1,int _Schedule=99>
 class _SA_Solver;
 
 /* To check Class whether or not it extend SA_Base Class*/
-template<class _T,int _STime=100,int _ETime=1,int _Schedule=90>
+template<class _T,int _STime=1000,int _ETime=1,int _Schedule=99>
 using SA_Solver = typename std::enable_if< std::is_base_of<SA_Base<_T,typename _T::auxType,typename _T::stateType>,
                                                             _T
                                                           >::value,
