@@ -15,26 +15,29 @@
 #include"NNBase.hpp"
 #include"Utility.hpp"
 
-template<class T, class Tuple,std::size_t... Dims>
-struct make_tuple_array{
-    typedef Tuple type;
-};
-
-template<class T, class Tuple, std::size_t First, std::size_t... Dims>
-struct make_tuple_array<T,Tuple,First,Dims...>{
-    typedef typename make_tuple_array< T, typename mtl::concat < Tuple, std::tuple<std::array<T,First>>>::type  , Dims... >::type type;
-};
+namespace mtl{
 
 template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
 class NNSolver {
 public:
+    explicit NNSolver(double t_rate):TRAINIG_RATE(t_rate){}
+    
     typedef std::array<Unit , _First>    input_array;
     typedef std::array<Unit , _Last>     output_array;
     
-    typedef typename make_tuple_array<Unit, std::tuple<>, _First, Dims..., _Last>::type network;
+    typedef typename mtl::make_tuple_array<Unit, std::tuple<>, _First, Dims..., _Last>::type network;
+    
     network perceptron;
-
-    output_array    solveAnswer(input_array);
+    
+    typedef std::array<double,std::tuple_size<typename std::remove_reference< decltype(std::get<1>(perceptron)) >::type>::value > a;
+    a _a;
+    
+    static constexpr int SURFACE_SIZE =  std::tuple_size<network>::value;
+    const double TRAINIG_RATE;
+    
+    const output_array& solveAnswer(input_array);
+    const output_array& training(input_array                                                input,
+                                 std::array<double, std::tuple_size< output_array >::value>&& target);
     
 private:
     
@@ -60,15 +63,29 @@ private:
 };
 
 template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-typename NNSolver<_First , _Last , Dims...>::output_array NNSolver<_First , _Last , Dims...>::solveAnswer(input_array sensory){
+const typename NNSolver<_First , _Last , Dims...>::output_array& NNSolver<_First , _Last , Dims...>::solveAnswer(input_array sensory){
     
     std::get<0>(perceptron) = sensory;
     
-    mtl::ExecuteAll(perceptron, calcSurface());
+    mtl::surfaceExecuteAll(perceptron, calcSurface());
     
     _sensory = sensory;
     
-    return std::get< std::tuple_size<network>::value -1 >(perceptron);
+    return std::get< SURFACE_SIZE -1 >(perceptron);
+}
+
+template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
+const typename NNSolver<_First , _Last , Dims...>::output_array&
+    NNSolver<_First , _Last , Dims...>::training(input_array                                                input,
+                                                 std::array<double, std::tuple_size< output_array >::value>&& target){
+    
+    std::get<0>(perceptron) = input;
+    mtl::surfaceExecuteAll(perceptron, calcSurface());
+    
+    Backpropagation _training;
+        _training(std::move(perceptron),/*target*/ {1},TRAINIG_RATE);
+        
+    return std::get< SURFACE_SIZE-1 >(perceptron);
 }
 
 template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
@@ -94,6 +111,8 @@ struct NNSolver<_First , _Last , Dims...>::calcSurface{
         return sum;
     }
 };
+
+}
 
     
 

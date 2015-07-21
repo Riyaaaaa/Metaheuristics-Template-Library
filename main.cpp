@@ -8,8 +8,9 @@
 
 #include <iostream>
 #include <fstream>
-#include "SA/sample/test.h"
-#include "GA/sample/test.h"
+#include <random>
+//#include "SA/sample/test.h"
+//#include "GA/sample/test.h"
 #include "NN/NNSolver.hpp"
 #include "NN/test_nn.h"
 

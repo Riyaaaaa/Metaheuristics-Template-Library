@@ -17,6 +17,7 @@ public:
     double weight=1;
     double status;
     
+    
     template<class F>
     double output(F&& f);
     
