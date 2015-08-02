@@ -14,6 +14,7 @@
 
 namespace mtl{
     
+    /* part recursive*/
     template<size_t begin, size_t end, bool terminate = begin + 1 == end>
     struct surfaceExecutePart;
     
@@ -56,7 +57,64 @@ namespace mtl{
                                      std::forward<Tuple>(tuple),
                                      std::forward<Function>(function));
     }
+    /* --- */
     
+    template<size_t index, size_t end, bool isEnd = index == end>
+    struct forwardExecute;
+    
+    template<size_t index, size_t end>
+    struct forwardExecute<index, end, false>
+    {
+        template<typename Tuple, typename F, typename... Args>
+        static void Execute(Tuple&& tuple, F&& f, Args&&... args)
+        {
+            f.template operator()<index>(std::forward<Tuple>(tuple),std::forward<Args>(args)...);
+            forwardExecute<index+1,end>::Execute(
+                                                 std::forward<Tuple>(tuple),
+                                                 std::forward<F>(f),
+                                                 args...
+                                                 );
+
+        }
+    };
+    
+    template<size_t index, size_t end>
+    struct forwardExecute<index, end, true>
+    {
+        template<typename Tuple, class F, typename... Args>
+        static void Execute(Tuple&& tuple, F&& f, Args&&... args)
+        {
+            f.template operator()<index>(std::forward<Tuple>(tuple),std::forward<Args>(args)...);
+        }
+    };
+    
+    template< std::size_t begin, std::size_t end,typename Tuple, typename Function,typename... Args>
+    void forwardExecuteAll(Tuple&& tuple, Function&& function, Args&&... args)
+    {
+        forwardExecute<begin, end>::Execute(
+                                            std::forward<Tuple>(tuple),
+                                            std::forward<Function>(function),
+                                            args...
+                                        );
+    }
+
+    
+    template<std::size_t index>
+    struct propagationTuple{
+        template<class Tuple,class F, typename... Args>
+        static double Execute(Tuple&& tuple,F&& f,Args&&... args){
+            propagationTuple<index-1>::Execute(tuple,f,
+                                               std::forward<F>(f)(std::get<index>(tuple),args...));
+        }
+    };
+    
+    template<>
+    struct propagationTuple<0>{
+        template<class Tuple,class F, typename... Args>
+        static void Execute(Tuple&& tuple,F&& f,Args&&... args){
+            std::forward<F>(f)(std::get<0>(tuple),args...);
+        }
+    };
     
     template <class Seq1, class Seq2>
     struct concat;

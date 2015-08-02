@@ -10,13 +10,18 @@
 #define MTL_Development_Algorithm_hpp
 
 #include<cmath>
+#include"Utility.hpp"
 #include"NNBase.hpp"
 
 struct sigmoid{
     double operator()(double input,double a=1){return 1 / 1 + exp(-a*input);}
 };
 
-struct Backpropagation{
+template<class Tuple, bool isSensory = (std::tuple_size<Tuple>::value > 2) >
+struct Backpropagation;
+
+template<class Tuple>
+struct Backpropagation<Tuple,true>{
     /*
     template<std::size_t _Size1, std::size_t _Size2>
     void operator()(std::array<Unit, _Size1>&& surface1, std::array<Unit, _Size2> surface2,double delta,double training_rate){
@@ -28,19 +33,18 @@ struct Backpropagation{
     
     double _trate;
     
-    template<class Tuple>
-    void operator()(Tuple&& perceptron,
+    void PropagationApply(Tuple&& perceptron,
                     std::array<double,
-                    std::tuple_size< typename std::remove_reference <decltype(std::get<std::tuple_size<Tuple>::value-1>(perceptron))>::type >::value>&& target,
+                    std::tuple_size< std::remove_reference_t <decltype(std::get<std::tuple_size<Tuple>::value-1>(perceptron))> >::value>&& target,
                     double training_rate){
         
         static constexpr std::size_t SURFACE_SIZE = std::tuple_size<Tuple>::value;
-        typedef std::remove_reference<decltype(std::get< SURFACE_SIZE-1 >(perceptron))> output_array;
-        typedef std::remove_reference<decltype(std::get< SURFACE_SIZE-2 >(perceptron))> input_array;
+        typedef std::remove_reference_t<decltype(std::get< SURFACE_SIZE-1 >(perceptron))> output_array;
+        typedef std::remove_reference_t<decltype(std::get< SURFACE_SIZE-2 >(perceptron))> input_array;
         auto& response = std::get< SURFACE_SIZE-1 >(perceptron);
         auto& sensory = std::get< SURFACE_SIZE-2 >(perceptron);
-        
-        typename std::remove_reference<decltype(target)>::type delta;
+
+        std::array<double, std::tuple_size< std::remove_reference_t< decltype(sensory) > > ::value > delta;
         
         double out_delta,out;
         _trate = training_rate;
@@ -49,45 +53,36 @@ struct Backpropagation{
             out = response[i].output(sigmoid());
             out_delta = out * (1 - out) * (target[i] - out);
         
-            std::size_t input_array_size = sensory.size();
-            for(int j=0; j<input_array_size; j++){
+            for(int j=0; j<delta.size(); j++){
                 delta[j] = _trate * out_delta * sensory[j].output(sigmoid());
                 sensory[j].weight += delta[j];
             }
         }
         
-        unfoldTuple<Tuple,SURFACE_SIZE-3>(std::forward<Tuple>(perceptron), std::forward<decltype(delta)>(delta));
+        mtl::propagationTuple<SURFACE_SIZE-3>::Execute(std::forward<Tuple>(perceptron), *this, std::forward<decltype(delta)>(delta));
         
     }
     
-    template<class Tuple,std::size_t index>
-    void unfoldTuple(Tuple&& perceptron,
-                     std::array<double,
-                     std::tuple_size< typename std::remove_reference <decltype(std::get<std::tuple_size<Tuple>::value-1>(perceptron))>::type >::value>&& delta){
-        
-        auto& out_surface = std::get<index+1>(perceptron);
-        auto& input_surface = std::get<index>(perceptron);
-        std::size_t out_array_size = std::tuple_size<typename std::remove_reference<decltype(out_surface)>::type>::value;
-        std::size_t input_array_size = std::tuple_size<typename std::remove_reference<decltype(input_surface)>::type>::value;
-        decltype(std::get< index+1 >(perceptron)) new_delta;
+    template<std::size_t Size1,std::size_t Size2>
+    std::array<double,Size1> operator()(std::array<Unit,Size1>& input_surface, std::array<double,Size2>& delta){
 
         double out, propagation=0;
         
-        for(int j=0; j<input_array_size; j++){
-            for(int i=0; i<out_array_size; i++){
+        std::array<double,Size1> new_delta;
+        
+        for(int j=0; j<Size1; j++){
+            for(int i=0; i<Size2; i++){
                 propagation += input_surface[j].weight * delta[i];
             }
             out = input_surface[j].output(sigmoid());
             new_delta[j] = out * (1-out) * propagation;
         }
         
-        unfoldTuple<Tuple,index-1>(perceptron, new_delta);
+        return new_delta;
     }
-    
-    template<class Tuple>
-    void unfoldTuple<0>(Tuple&& perceptron,
-                              std::array<double,
-                              std::tuple_size< typename std::remove_reference <decltype(std::get<std::tuple_size<Tuple>::value-1>(perceptron))>::type >::value>&& delta);
-    
 };
+
+template<class Tuple>
+struct Backpropagation<Tuple,false>;
+
 #endif
