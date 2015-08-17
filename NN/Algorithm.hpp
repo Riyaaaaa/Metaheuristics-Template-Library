@@ -14,9 +14,14 @@
 #include"NNBase.hpp"
 
 struct sigmoid{
-    double operator()(double input,double a=1){return 1 / 1 + exp(-a*input);}
+    double operator()(double input,double a=1){std::cout <<  (-1 / 2.) + 1 / (1. + exp(-a*input)) <<std::endl;
+                                                return (-1 / 2.) + 1 / (1. + exp(-a*input));}
 };
 
+struct threshold{
+    double operator()(double input,double T=0.5){ return input > T ? 1 : 0; }
+};
+    
 template<class Tuple, bool isSensory = (std::tuple_size<Tuple>::value > 2) >
 struct Backpropagation;
 

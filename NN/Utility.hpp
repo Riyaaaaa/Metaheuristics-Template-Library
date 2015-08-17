@@ -24,7 +24,7 @@ namespace mtl{
         template<typename Tuple, typename Function>
         static void Execute(Tuple && tuple, Function && function)
         {
-            function(std::get<begin>(tuple),std::get<begin+1>(tuple));
+            function(std::get<begin>(tuple));
         }
     };
     
@@ -32,7 +32,7 @@ namespace mtl{
     struct surfaceExecutePart<begin, end, false>
     {
         template<typename Tuple, typename Function>
-        static void Execute(Tuple && tuple, Function && function)
+        static void Execute(Tuple&& tuple, Function && function)
         {
             // execute first half
             surfaceExecutePart<begin, (begin + end) / 2>::Execute
@@ -45,15 +45,10 @@ namespace mtl{
     };
     
     // pass all element of tuple to function
-    template<typename Tuple, typename Function>
-    void surfaceExecuteAll(Tuple && tuple, Function && function)
+    template<std::size_t begin, std::size_t end,typename Tuple, typename Function>
+    void surfaceExecuteAll(Tuple&& tuple, Function && function)
     {
-        using namespace std;
-        
-        static const size_t end =
-        tuple_size<typename remove_reference<Tuple>::type>::value-1;
-        
-        surfaceExecutePart<0, end>::Execute(
+        surfaceExecutePart<begin, end>::Execute(
                                      std::forward<Tuple>(tuple),
                                      std::forward<Function>(function));
     }
@@ -72,7 +67,7 @@ namespace mtl{
             forwardExecute<index+1,end>::Execute(
                                                  std::forward<Tuple>(tuple),
                                                  std::forward<F>(f),
-                                                 args...
+                                                 std::forward<Args>(args)...
                                                  );
 
         }
@@ -94,7 +89,7 @@ namespace mtl{
         forwardExecute<begin, end>::Execute(
                                             std::forward<Tuple>(tuple),
                                             std::forward<Function>(function),
-                                            args...
+                                            std::forward<Args>(args)...
                                         );
     }
 
@@ -117,10 +112,10 @@ namespace mtl{
     };
     
     template <class Seq1, class Seq2>
-    struct concat;
+    struct connect;
     
     template <class... Seq1, class... Seq2>
-    struct concat<std::tuple<Seq1...>, std::tuple<Seq2...>> {
+    struct connect<std::tuple<Seq1...>, std::tuple<Seq2...>> {
         typedef std::tuple<Seq1..., Seq2...> type;
     };
     
@@ -131,7 +126,7 @@ namespace mtl{
     
     template<class T, class Tuple, std::size_t First, std::size_t... Dims>
     struct make_tuple_array<T,Tuple,First,Dims...>{
-        typedef typename make_tuple_array< T, typename mtl::concat < Tuple, std::tuple<std::array<T,First>> >::type  , Dims... >::type type;
+        typedef typename make_tuple_array< T, typename mtl::connect < Tuple, std::tuple<std::array<T,First>> >::type  , Dims... >::type type;
     };
     /*
     template<template<class T,std::size_t __Size> class Array, std::size_t _Size = __Size>

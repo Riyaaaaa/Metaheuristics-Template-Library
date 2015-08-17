@@ -10,19 +10,24 @@
 #define MTL_Development_test_nn_h
 
 #include"NNSolver.hpp"
+#include<vector>
+#include<utility>
 
 void test_nn(){
-    mtl::NNSolver<2, 1, 2> a(0.1);
+    mtl::NNSolver<2, 1, 2> a(0.5);
     
-    a.training({1,1}, {1});
-    a.training({0,1}, {0});
-    a.training({1,0}, {0});
-    a.training({0,0}, {0});
+    std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
+    list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{1} ));
+    list.push_back(std::make_pair( std::array<double,2>{1,0}, std::array<double,1>{0} ));
+    list.push_back(std::make_pair( std::array<double,2>{0,1}, std::array<double,1>{0} ));
+    list.push_back(std::make_pair( std::array<double,2>{0,0}, std::array<double,1>{0} ));
+
+    a.training(list);
     
     auto output = a.solveAnswer({1,1});
     
     for(auto& unit: output){
-        std::cout << unit.output(sigmoid()) << ' ';
+        std::cout << unit.output(threshold()) << ' ';
     }
     std::cout << std::endl;
 }

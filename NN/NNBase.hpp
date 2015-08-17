@@ -15,20 +15,22 @@
 class Unit{
 public:
     double weight=1;
-    double status;
-    
+    bool isBias=false;
     
     template<class F>
     double output(F&& f);
     
     template<std::size_t _iSize>
     double input(const std::array<Unit , _iSize>& surface);
+    
+    void setStatus(double _s){if(!isBias)_status = _s;}
 private:
+    double _status;
 };
 
 template<class F>
 double Unit::output(F&& f){
-    return f(status);
+    return f(weight*_status);
 }
 
 #endif /* defined(__MTL_Development__NNBase__) */
