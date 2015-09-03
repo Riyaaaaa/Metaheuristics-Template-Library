@@ -15,7 +15,7 @@
 
 struct sigmoid{
     double operator()(double input,double a=1){std::cout <<  (-1 / 2.) + 1 / (1. + exp(-a*input)) <<std::endl;
-                                                return (-1 / 2.) + 1 / (1. + exp(-a*input));}
+                                                return 1 / (1. + exp(-a*input));}
 };
 
 struct threshold{
@@ -24,9 +24,12 @@ struct threshold{
     
 template<class Tuple, bool isSensory = (std::tuple_size<Tuple>::value > 2) >
 struct Backpropagation;
+/*  Back propagation requires three or more layers */
 
 template<class Tuple>
 struct Backpropagation<Tuple,true>{
+    typedef std::remove_reference_t<Tuple> Tuple_t;
+    typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     /*
     template<std::size_t _Size1, std::size_t _Size2>
     void operator()(std::array<Unit, _Size1>&& surface1, std::array<Unit, _Size2> surface2,double delta,double training_rate){
@@ -35,51 +38,40 @@ struct Backpropagation<Tuple,true>{
         }
     }
      */
+    const double _trate = 0.15;
     
-    double _trate;
-    
-    void PropagationApply(Tuple&& perceptron,
-                    std::array<double,
-                    std::tuple_size< std::remove_reference_t <decltype(std::get<std::tuple_size<Tuple>::value-1>(perceptron))> >::value>&& target,
-                    double training_rate){
-        
-        static constexpr std::size_t SURFACE_SIZE = std::tuple_size<Tuple>::value;
-        typedef std::remove_reference_t<decltype(std::get< SURFACE_SIZE-1 >(perceptron))> output_array;
-        typedef std::remove_reference_t<decltype(std::get< SURFACE_SIZE-2 >(perceptron))> input_array;
-        auto& response = std::get< SURFACE_SIZE-1 >(perceptron);
-        auto& sensory = std::get< SURFACE_SIZE-2 >(perceptron);
-
-        std::array<double, std::tuple_size< std::remove_reference_t< decltype(sensory) > > ::value > delta;
-        
-        double out_delta,out;
-        _trate = training_rate;
+    template<std::size_t Size1,std::size_t Size2>
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,output_layer_t&& target){
+        double out;
+        std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
         for(std::size_t i=0; i<target.size() ; i++){
-            out = response[i].output(sigmoid());
-            out_delta = out * (1 - out) * (target[i] - out);
-        
-            for(int j=0; j<delta.size(); j++){
-                delta[j] = _trate * out_delta * sensory[j].output(sigmoid());
-                sensory[j].weight += delta[j];
-            }
+            out = layer[i].output(sigmoid());
+            delta[i] = out * (1 - out) * (target[i] - out);
         }
-        
-        mtl::propagationTuple<SURFACE_SIZE-3>::Execute(std::forward<Tuple>(perceptron), *this, std::forward<decltype(delta)>(delta));
-        
+        return delta;
     }
     
     template<std::size_t Size1,std::size_t Size2>
-    std::array<double,Size1> operator()(std::array<Unit,Size1>& input_surface, std::array<double,Size2>& delta){
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,output_layer_t&& target, std::array<double,Size2>&& delta){
 
         double out, propagation=0;
         
         std::array<double,Size1> new_delta;
         
+        for(auto& unit: input_layer){
+            
+            for(int i=0; i<Size2; i++){
+                unit.weight[i] += _trate * delta[i] * unit.output(sigmoid());
+                unit.bias += _trate * delta[i];
+            }
+        }
+        
         for(int j=0; j<Size1; j++){
             for(int i=0; i<Size2; i++){
-                propagation += input_surface[j].weight * delta[i];
+                propagation += input_layer[j].weight[i] * delta[i];
             }
-            out = input_surface[j].output(sigmoid());
+            out = input_layer[j].output(sigmoid());
             new_delta[j] = out * (1-out) * propagation;
         }
         

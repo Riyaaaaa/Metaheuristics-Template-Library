@@ -17,82 +17,81 @@
 
 namespace mtl{
     
-    template<std::size_t surfaceSize>
-    static bool statusScanning(std::array<Unit,surfaceSize> surface, std::array<double,surfaceSize> target){
+    template<class Layer>
+    static bool statusScanning(Layer layer, std::array<double, std::tuple_size<Layer>::value> target){
         bool flag = true;
         double epsilon = 0.01;
-        for(int i=0;i<surfaceSize; i++){
-            flag = flag & ( fabs(surface[i].output(threshold()) - target[i]) < epsilon );
+        for(int i=0; i<std::tuple_size<Layer>::value ; i++){
+            flag = flag & ( fabs(threshold()(layer[i].getStatus()) - target[i]) < epsilon );
         }
         return flag;
     }
     
-    template<std::size_t surfaceSize>
-    static void inputting(std::array<Unit,surfaceSize+1>& surface, std::array<double,surfaceSize> input){
-        for(int i=1;i<surfaceSize; i++){
-            surface[i].setStatus(input[i-1]);
+    template<class Layer>
+    static void inputting(Layer layer, std::array<double, std::tuple_size<Layer>::value> input){
+        for(int i=0; i<std::tuple_size<Layer>::value; i++){
+            layer[i].setStatus(input[i]);
         }
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
+    template<class NetworkStruct>
     class NNSolver {
     public:
         explicit NNSolver(double t_rate);
         
-        typedef std::array<Unit , _First>    input_array;
-        typedef std::array<Unit , _Last>     output_array;
+        NetworkStruct neural;
+        static constexpr std::size_t LAYER_SIZE = NetworkStruct::LAYER_SIZE;
         
-        typedef typename mtl::make_tuple_array<Unit, std::tuple<>, _First+1, (Dims+1)..., _Last>::type network;
+        typedef typename NetworkStruct::template layer_type<LAYER_SIZE-1>   output_layer;
+        typedef typename NetworkStruct::template layer_type<0>              input_layer;
         
-        network perceptron;
-        
-        typedef std::array<double,std::tuple_size<typename std::remove_reference< decltype(std::get<1>(perceptron)) >::type>::value > a;
-        a _a;
-        
-        static constexpr int SURFACE_SIZE =  std::tuple_size<network>::value;
         const double TRAINIG_RATE;
         
-        const output_array& solveAnswer(std::array<double, _First>);
-        const output_array& training(std::vector<
-                                     std::pair<
-                                     std::array<double, std::tuple_size< input_array >::value>,
-                                     std::array<double, std::tuple_size< output_array >::value>
-                                     >
-                                     >);
+        auto solveAnswer(std::array<double, std::tuple_size<input_layer>::value>)
+        ->const output_layer;
+        
+        auto training(std::vector<
+                 std::pair<
+                      std::array<double, std::tuple_size<input_layer>::value>,
+                      std::array<double, std::tuple_size<output_layer>::value>
+                 >
+                 > training_list)
+        ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&;
+        
         template<typename... Args>
-        const output_array& trainingImpl(std::array<double, std::tuple_size< input_array >::value>,
-                                         std::array<double, std::tuple_size< output_array >::value>, Args&&... args);
+        const output_layer& trainingImpl(std::array<double, std::tuple_size< input_layer >::value>,
+                                         std::array<double, std::tuple_size< output_layer >::value>, Args&&... args);
         template<typename... Args>
         void makeTrainingPair(
                               std::vector<
                                             std::pair<
-                                                    std::array<double, std::tuple_size< input_array >::value>,
-                                                    std::array<double, std::tuple_size< output_array >::value>
+                                                    std::array<double, std::tuple_size< input_layer >::value>,
+                                                    std::array<double, std::tuple_size< output_layer >::value>
                                                     >
                                         >&,
-                              std::array<double, std::tuple_size< input_array >::value>,
-                              std::array<double, std::tuple_size< output_array >::value>, Args&&... args);
+                              std::array<double, std::tuple_size< input_layer >::value>,
+                              std::array<double, std::tuple_size< output_layer >::value>, Args&&... args);
         
         template<typename... Args>
         void makeTrainingPair(
                               std::vector<
                               std::pair<
-                              std::array<double, std::tuple_size< input_array >::value>,
-                              std::array<double, std::tuple_size< output_array >::value>
+                              std::array<double, std::tuple_size< input_layer >::value>,
+                              std::array<double, std::tuple_size< output_layer >::value>
                               >
                               >&,
-                              std::array<double, std::tuple_size< input_array >::value>,
-                              std::array<double, std::tuple_size< output_array >::value>);
+                              std::array<double, std::tuple_size< input_layer >::value>,
+                              std::array<double, std::tuple_size< output_layer >::value>);
         
-        void regulateWeight(std::array<double, std::tuple_size< input_array >::value>& input,
-                            std::array<double, std::tuple_size< output_array >::value>& target);
+        void regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
+                            std::array<double, std::tuple_size< output_layer >::value>& target);
 
         
     private:
         struct calcSurface;
         
-        //input_array     _sensory;
-        output_array    _response;
+        //input_layer     _sensory;
+        output_layer    _response;
         
         /*
          template<typename Tuple, size_t... I>
@@ -110,35 +109,39 @@ namespace mtl{
          */
     };
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-    NNSolver<_First , _Last , Dims...>::NNSolver(double t_rate):TRAINIG_RATE(t_rate){
-        surfaceExecuteAll<0, SURFACE_SIZE-1>(perceptron, [](auto& surface){
-            surface[0].setStatus(1);
-            surface[0].isBias = true;
+    template<class NetworkStruct>
+    NNSolver<NetworkStruct>::NNSolver(double t_rate):TRAINIG_RATE(t_rate){
+        surfaceExecuteAll<0, LAYER_SIZE>(neural.network, [](auto& surface){
+            for(int i=0; i<surface.size(); i++){
+                surface[i].setStatus(1);
+                surface[i].bias=0.5;
+                std::fill(surface[i].weight.begin(),surface[i].weight.end(),0.5);
+            }
         });
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-    const typename NNSolver<_First , _Last , Dims...>::output_array& NNSolver<_First , _Last , Dims...>::solveAnswer(std::array<double, _First>
-                                                                                                                     sensory){
+    template<class NetworkStruct>
+    auto NNSolver<NetworkStruct>::solveAnswer(std::array<double, std::tuple_size<input_layer>::value> sensory)
+    ->const output_layer{
         
-        inputting(std::get<0>(perceptron),sensory);
+        inputting(std::get<0>(neural.network),sensory);
         
-        mtl::forwardExecuteAll<0,SURFACE_SIZE-2>(perceptron, calcSurface());
+        mtl::forwardExecuteAll<0,LAYER_SIZE-2>(neural.network, calcSurface());
         
         //_sensory = sensory;
         
-        return std::get< SURFACE_SIZE -1 >(perceptron);
+        return std::get< LAYER_SIZE -1 >(neural.network);
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
+                  /*
+    template<class NetworkStruct>
     template<typename... Args>
-    const typename NNSolver<_First , _Last , Dims...>::output_array&
-    NNSolver<_First , _Last , Dims...>::trainingImpl(std::array<double, std::tuple_size< input_array >::value> input,
-                                                    std::array<double, std::tuple_size< output_array >::value> target, Args&&... args){
+                  const NetworkStruct::template layer_type<LAYER_SIZE-1>&
+    NNSolver<NetworkStruct>::trainingImpl(std::array<double, std::tuple_size< input_layer >::value> input,
+                                                    std::array<double, std::tuple_size< output_layer >::value> target, Args&&... args){
         std::vector<std::pair<
-        std::array<double, std::tuple_size< input_array >::value>,
-        std::array<double, std::tuple_size< output_array >::value>
+        std::array<double, std::tuple_size< input_layer >::value>,
+        std::array<double, std::tuple_size< output_layer >::value>
         >
         > training_list;
         makeTrainingPair(training_list,input,target,args...);
@@ -146,43 +149,44 @@ namespace mtl{
         return training(training_list);
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
+    template<class NetworkStruct>
     template<typename... Args>
-    void NNSolver<_First , _Last , Dims...>::makeTrainingPair(
+    void NNSolver<NetworkStruct>::makeTrainingPair(
                           std::vector<
                                         std::pair<
-                                                    std::array<double, std::tuple_size< input_array >::value>,
-                                                    std::array<double, std::tuple_size< output_array >::value>
+                                                    std::array<double, std::tuple_size< input_layer >::value>,
+                                                    std::array<double, std::tuple_size< output_layer >::value>
                                                 >
                                     >& list,
-                          std::array<double, std::tuple_size< input_array >::value> input,
-                          std::array<double, std::tuple_size< output_array >::value> target, Args&&... args){
+                          std::array<double, std::tuple_size< input_layer >::value> input,
+                          std::array<double, std::tuple_size< output_layer >::value> target, Args&&... args){
         list.push_back(std::make_pair(input, target));
         makeTrainingPair(list, args...);
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
+    template<class NetworkStruct>
     template<typename... Args>
-    void NNSolver<_First , _Last , Dims...>::makeTrainingPair(
+    void NNSolver<NetworkStruct>::makeTrainingPair(
                                                               std::vector<
                                                               std::pair<
-                                                              std::array<double, std::tuple_size< input_array >::value>,
-                                                              std::array<double, std::tuple_size< output_array >::value>
+                                                              std::array<double, std::tuple_size< input_layer >::value>,
+                                                              std::array<double, std::tuple_size< output_layer >::value>
                                                               >
                                                               >& list,
-                                                              std::array<double, std::tuple_size< input_array >::value> input,
-                                                              std::array<double, std::tuple_size< output_array >::value> target){
+                                                              std::array<double, std::tuple_size< input_layer >::value> input,
+                                                              std::array<double, std::tuple_size< output_layer >::value> target){
         list.push_back(std::make_pair(input, target));
     }
+                   */
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-    const typename NNSolver<_First , _Last , Dims...>::output_array&
-    NNSolver<_First , _Last , Dims...>::training(std::vector<
+    template<class NetworkStruct>
+    auto NNSolver<NetworkStruct>::training(std::vector<
                                                             std::pair<
-                                                                    std::array<double, std::tuple_size< input_array >::value>,
-                                                                    std::array<double, std::tuple_size< output_array >::value>
+                                                                    std::array<double, std::tuple_size<input_layer>::value>,
+                                                                    std::array<double, std::tuple_size<output_layer>::value>
                                                                     >
-                                                            > training_list){
+                                                            > training_list)
+                  ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&{
         const std::size_t TRAINIG_LIMITS = 1000;
         bool flag;
         
@@ -198,39 +202,39 @@ namespace mtl{
             if(flag)break;
         }
         
-        return std::get< SURFACE_SIZE-1 >(perceptron);
+        return std::get< LAYER_SIZE-1 >(neural);
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-    void NNSolver<_First , _Last , Dims...>::regulateWeight(std::array<double, std::tuple_size< input_array >::value>& input,
-                                                       std::array<double, std::tuple_size< output_array >::value>& target){
-        Backpropagation<network> _training;
+    template<class NetworkStruct>
+    void NNSolver<NetworkStruct>::regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
+                                                       std::array<double, std::tuple_size< output_layer >::value>& target){
+        Backpropagation<typename NetworkStruct::structure> _training;
         do{
-            inputting(std::get<0>(perceptron), input);
-            mtl::forwardExecuteAll<0, SURFACE_SIZE-2>(perceptron, calcSurface());
-            _training.PropagationApply(std::move(perceptron),std::move(target),TRAINIG_RATE);
-        }while(!statusScanning(std::get<SURFACE_SIZE-1>(perceptron),target));
+            inputting(std::get<0>(neural), input);
+            mtl::forwardExecuteAll<0, LAYER_SIZE-1>(neural.network, calcSurface());
+            mtl::propagationTupleApply<LAYER_SIZE-1>(std::move(neural.network), std::move(_training), std::move(target));
+        }while(!statusScanning(std::get<LAYER_SIZE-1>(neural),target));
         
     }
     
-    template<std::size_t _First , std::size_t _Last , std::size_t... Dims>
-    struct NNSolver<_First , _Last , Dims...>::calcSurface{
+    template<class NetworkStruct>
+    struct NNSolver<NetworkStruct>::calcSurface{
         template<std::size_t index>
-        void operator()(network& perceptron){
-            if(index != SURFACE_SIZE-1){
-                double sum = sigma(std::get<index>(perceptron));
+        void operator()(typename NetworkStruct::structure& network){
+            if(index != LAYER_SIZE-1){
+                double sum = sigma(std::get<index>(network));
             
-                for(auto& unit: std::get<index+1>(perceptron)){
+                for(auto& unit: std::get<index+1>(network)){
                     unit.setStatus(sum);
                 }
             }
         }
         
         
-        template<std::size_t input_size>
-        static double sigma(std::array<Unit,input_size>& input_surface){
+        template<class Layer>
+        static double sigma(Layer& input_layer){
             double sum=0;
-            for(auto& unit: input_surface){
+            for(auto& unit: input_layer){
                 sum += unit.output(sigmoid());
             }
             return sum;
