@@ -52,8 +52,8 @@ namespace mtl{
                                                 std::forward<Args>(args)...
                                                 );
     }
-    /* --- */
     
+    /* forward unfold */
     template<size_t index, size_t end, bool isEnd = index == end>
     struct forwardExecute;
     
@@ -82,6 +82,7 @@ namespace mtl{
         }
     };
     
+    // pass all element of tuple to function
     template< std::size_t begin, std::size_t end,typename Tuple, typename Function,typename... Args>
     void forwardExecuteAll(Tuple&& tuple, Function&& function, Args&&... args)
     {
@@ -92,6 +93,7 @@ namespace mtl{
                                         );
     }
     
+    /* recursive and propagate return value. */
     template<std::size_t index>
     struct propagationTuple{
         template<class Tuple, class F, class R,typename... Args>
@@ -131,6 +133,7 @@ namespace mtl{
                                                   );
     }
     
+    /* concatenate std::tuple */
     template <class Seq1, class Seq2>
     struct connect;
     
@@ -139,6 +142,7 @@ namespace mtl{
         typedef std::tuple<Seq1..., Seq2...> type;
     };
     
+    /* make std::tuple< std::array<T,Size1>, std::array<T,Size2>, ... std::array<T,SizeN> > */
     template<class T, class Tuple,std::size_t... Dims>
     struct make_tuple_array{
         typedef Tuple type;
@@ -149,6 +153,7 @@ namespace mtl{
         typedef typename make_tuple_array< T, typename mtl::connect < Tuple, std::tuple<std::array<T,First>> >::type  , Dims... >::type type;
     };
     
+    /* T has template argments */
     template<template<std::size_t>class T, class Tuple,std::size_t... Dims>
     struct make_tuple_array_3dims{
         typedef Tuple type;
@@ -163,12 +168,7 @@ namespace mtl{
     struct make_tuple_array_3dims<T,Tuple,First,Next,Dims...>{
         typedef typename make_tuple_array_3dims< T, typename mtl::connect < Tuple, std::tuple<std::array<T<Next>,First> > >::type  , Next , Dims... >::type type;
     };
-    /*
-    template<template<class T,std::size_t __Size> class Array, std::size_t _Size = __Size>
-    struct array_size{
-        static constexpr std::size_t Size = _Size;
-    };
-     */
+
 }
 
 #endif

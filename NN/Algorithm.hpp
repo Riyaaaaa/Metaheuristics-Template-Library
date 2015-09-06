@@ -14,30 +14,25 @@
 #include"NNBase.hpp"
 
 struct sigmoid{
-    double operator()(double input,double a=1){std::cout <<  (-1 / 2.) + 1 / (1. + exp(-a*input)) <<std::endl;
-                                                return 1 / (1. + exp(-a*input));}
+    double operator()(double input,double a=1)  { return 1 / (1. + exp(-a*input));}
 };
 
 struct threshold{
     double operator()(double input,double T=0.5){ return input > T ? 1 : 0; }
 };
-    
+
 template<class Tuple, bool isSensory = (std::tuple_size<Tuple>::value > 2) >
-struct Backpropagation;
+struct _Backpropagation;
 /*  Back propagation requires three or more layers */
 
 template<class Tuple>
-struct Backpropagation<Tuple,true>{
+using Backpropagation = _Backpropagation<Tuple>;
+
+template<class Tuple>
+struct _Backpropagation<Tuple,true>{
     typedef std::remove_reference_t<Tuple> Tuple_t;
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
-    /*
-    template<std::size_t _Size1, std::size_t _Size2>
-    void operator()(std::array<Unit, _Size1>&& surface1, std::array<Unit, _Size2> surface2,double delta,double training_rate){
-        for(auto& unit: surface1){
-            unit.weight += training_rate * delta * unit.output(sigmoid());
-        }
-    }
-     */
+    
     const double _trate = 0.15;
     
     template<std::size_t Size1,std::size_t Size2>
@@ -60,7 +55,6 @@ struct Backpropagation<Tuple,true>{
         std::array<double,Size1> new_delta;
         
         for(auto& unit: input_layer){
-            
             for(int i=0; i<Size2; i++){
                 unit.weight[i] += _trate * delta[i] * unit.output(sigmoid());
                 unit.bias += _trate * delta[i];
@@ -79,7 +73,8 @@ struct Backpropagation<Tuple,true>{
     }
 };
 
+/* Network does not have three or more layers */
 template<class Tuple>
-struct Backpropagation<Tuple,false>;
+struct _Backpropagation<Tuple,false>;
 
 #endif

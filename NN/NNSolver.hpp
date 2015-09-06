@@ -50,6 +50,7 @@ namespace mtl{
         auto solveAnswer(std::array<double, std::tuple_size<input_layer>::value>)
         ->const output_layer;
         
+        template<template<class>class _TRAINING_OBJECT>
         auto training(std::vector<
                  std::pair<
                       std::array<double, std::tuple_size<input_layer>::value>,
@@ -57,6 +58,11 @@ namespace mtl{
                  >
                  > training_list)
         ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&;
+        
+        template<class _TRAINING_OBJECT>
+        void regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
+                            std::array<double, std::tuple_size< output_layer >::value>& target,
+                            _TRAINING_OBJECT& _training_algorithm);
         
         template<typename... Args>
         const output_layer& trainingImpl(std::array<double, std::tuple_size< input_layer >::value>,
@@ -83,30 +89,11 @@ namespace mtl{
                               std::array<double, std::tuple_size< input_layer >::value>,
                               std::array<double, std::tuple_size< output_layer >::value>);
         
-        void regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
-                            std::array<double, std::tuple_size< output_layer >::value>& target);
-
-        
     private:
         struct calcSurface;
         
         //input_layer     _sensory;
         output_layer    _response;
-        
-        /*
-         template<typename Tuple, size_t... I>
-         void NNapply_(Tuple& args, std::index_sequence<I...>)
-         {
-         calcSurface(std::get<I>(std::forward<Tuple>(args))...);
-         }
-         
-         template<typename Tuple,
-         typename Indices = std::make_index_sequence<std::tuple_size<Tuple>::value-1>>
-         auto NNapply(Tuple& args)
-         {
-         NNapply_(args, Indices());
-         }
-         */
     };
     
     template<class NetworkStruct>
@@ -180,6 +167,7 @@ namespace mtl{
                    */
     
     template<class NetworkStruct>
+    template<template<class>class _TRAINING_OBJECT>
     auto NNSolver<NetworkStruct>::training(std::vector<
                                                             std::pair<
                                                                     std::array<double, std::tuple_size<input_layer>::value>,
@@ -190,13 +178,15 @@ namespace mtl{
         const std::size_t TRAINIG_LIMITS = 1000;
         bool flag;
         
+                      _TRAINING_OBJECT<typename NetworkStruct::structure> training_object;
+                      
         for(int i=0; i<TRAINIG_LIMITS; i++){
             flag = true;
             for(auto& training_target: training_list){
                 if(statusScanning(solveAnswer(training_target.first),training_target.second))continue;
                 else {
                     flag = false;
-                    regulateWeight(training_target.first, training_target.second);
+                    regulateWeight(training_target.first, training_target.second, training_object);
                 }
             }
             if(flag)break;
@@ -206,14 +196,16 @@ namespace mtl{
     }
     
     template<class NetworkStruct>
+    template<class _TRAINING_OBJECT>
     void NNSolver<NetworkStruct>::regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
-                                                       std::array<double, std::tuple_size< output_layer >::value>& target){
-        Backpropagation<typename NetworkStruct::structure> _training;
+                                                 std::array<double, std::tuple_size< output_layer >::value>& target,
+                                                 _TRAINING_OBJECT& _training_algorithm){
         do{
             inputting(std::get<0>(neural), input);
             mtl::forwardExecuteAll<0, LAYER_SIZE-1>(neural.network, calcSurface());
-            mtl::propagationTupleApply<LAYER_SIZE-1>(std::move(neural.network), std::move(_training), std::move(target));
+            mtl::propagationTupleApply<LAYER_SIZE-1>(std::move(neural.network), std::move(_training_algorithm), std::move(target));
         }while(!statusScanning(std::get<LAYER_SIZE-1>(neural),target));
+        
         
     }
     

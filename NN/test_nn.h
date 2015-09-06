@@ -22,7 +22,7 @@ void test_nn(){
     list.push_back(std::make_pair( std::array<double,2>{0,1}, std::array<double,1>{1} ));
     list.push_back(std::make_pair( std::array<double,2>{0,0}, std::array<double,1>{0} ));
 
-    a.training(list);
+    a.training<Backpropagation>(list);
     
     auto output = a.solveAnswer({0,0});
     
