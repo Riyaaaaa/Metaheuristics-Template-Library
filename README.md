@@ -7,9 +7,9 @@ Metaheuristics Template Library / supported Genetic Algorithm, Simulated Anneali
 waring: It is under development.
 
 ##Overview
-It is Library for C++.
+MTL is a header-only library for meta-heuristics programming.
 
-When you wanted to use the meta-heuristics , or when you need abstract and highly reusable architecture than, this library would be useful always.
+When you wanted to use the meta-heuristics, or when you need abstract and highly reusable architecture than, this library would be useful always.
 
 ## Description
 support the following algorithm
@@ -25,12 +25,12 @@ This framework is a static implementation, and works faster than usual. Instead,
 Anyone who is able to use moddern C++, would can handle this easily.
 
 ## Requirement
-C++14
+C++14 Compiler
 
 OpenCV 2.49 (TSP of GA/SA sample)
 
 ## Install
- Place the file of purpose in the same directory , and please compile.
+ Please place the file of purpose in the same directory, and compile.
  
  compile option: `-std=c++1y`
  
