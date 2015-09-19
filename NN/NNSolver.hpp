@@ -22,13 +22,14 @@ namespace mtl{
         bool flag = true;
         double epsilon = 0.01;
         for(int i=0; i<std::tuple_size<Layer>::value ; i++){
-            flag = flag & ( fabs(threshold()(layer[i].getStatus()) - target[i]) < epsilon );
+            flag = flag & ( fabs((layer[i].output(threshold()) - target[i])) < epsilon );
+            std::cout << i << "th units output " << layer[i].output(threshold()) << (flag ? " ok" : " error ") << std::endl;
         }
         return flag;
     }
     
     template<class Layer>
-    static void inputting(Layer layer, std::array<double, std::tuple_size<Layer>::value> input){
+    static void inputting(Layer& layer, std::array<double, std::tuple_size<Layer>::value> input){
         for(int i=0; i<std::tuple_size<Layer>::value; i++){
             layer[i].setStatus(input[i]);
         }
@@ -113,7 +114,7 @@ namespace mtl{
         
         inputting(std::get<0>(neural.network),sensory);
         
-        mtl::forwardExecuteAll<0,LAYER_SIZE-2>(neural.network, calcSurface());
+        mtl::forwardExecuteAll<0,LAYER_SIZE-1>(neural.network, calcSurface());
         
         //_sensory = sensory;
         
@@ -213,21 +214,21 @@ namespace mtl{
     struct NNSolver<NetworkStruct>::calcSurface{
         template<std::size_t index>
         void operator()(typename NetworkStruct::structure& network){
+            auto& layer = std::get<index+1>(network);
             if(index != LAYER_SIZE-1){
-                double sum = sigma(std::get<index>(network));
-            
-                for(auto& unit: std::get<index+1>(network)){
-                    unit.setStatus(sum);
+                for(int i=0; i<layer.size(); i++){
+                    double sum = sigma(std::get<index>(network),i);
+                    layer[i].setStatus(sigmoid()(sum+layer[i].bias));
                 }
             }
         }
         
         
         template<class Layer>
-        static double sigma(Layer& input_layer){
+        static double sigma(Layer& input_layer,int unitid){
             double sum=0;
             for(auto& unit: input_layer){
-                sum += unit.output(sigmoid());
+                sum += unit.getStatus() * unit.weight[unitid] + unit.bias;
             }
             return sum;
         }
