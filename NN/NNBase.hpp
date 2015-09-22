@@ -62,6 +62,12 @@ public:
     
     template<std::size_t layer_index>
     static constexpr std::size_t getLayerSize(){return std::tuple_size< typename std::tuple_element<layer_index,structure>::type >::value;}
+    
+    template<std::size_t layer_index>
+    typename std::tuple_element<layer_index, structure>::type& getLayer(){return std::get<layer_index>(network);};
+    
+    template<std::size_t layer_index,std::size_t unit_index>
+    mtl::array_base_t<typename std::tuple_element<layer_index, structure>::type>& getUnit(){return std::get<unit_index>(std::get<layer_index>(network));};
    
     template<std::size_t layer_index,std::size_t unit_index>
     typename std::tuple_element<layer_index+1, structure>::type& layerForwardIterator(); //forward iterator for propagation.
@@ -74,7 +80,7 @@ template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 template<std::size_t layer_index,std::size_t unit_index>
 auto FeedForward<_First,_Last,Args...>::layerForwardIterator()
 ->typename std::tuple_element<layer_index+1, structure>::type&{
-    static_assert(layer_index+1 >= LAYER_SIZE,"BUFFER OVER");
+    static_assert(layer_index+1 < LAYER_SIZE,"BUFFER OVER");
     return std::get<layer_index+1>(network);
 }
 
@@ -82,7 +88,7 @@ template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 template<std::size_t layer_index,std::size_t unit_index>
 auto FeedForward<_First,_Last,Args...>::layerBackwordIterator()
 ->typename std::tuple_element<layer_index-1, structure>::type&{
-     static_assert((long)layer_index-1 < 0,"BUFFER OVER");
+    static_assert((long)layer_index-1 >= 0,"BUFFER OVER");
     return std::get<layer_index-1>(network);
 }
 

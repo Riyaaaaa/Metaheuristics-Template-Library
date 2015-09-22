@@ -91,7 +91,7 @@ namespace mtl{
         
         inputting(std::get<0>(neural.network),sensory);
         
-        mtl::forwardExecuteAll<0,LAYER_SIZE-1>(neural.network, calcSurface());
+        mtl::forwardExecuteAll<1,LAYER_SIZE>(neural, calcSurface());
         
         //_sensory = sensory;
         
@@ -179,25 +179,28 @@ namespace mtl{
                                                  std::array<double, std::tuple_size< output_layer >::value>& target,
                                                  _TRAINING_OBJECT& _training_algorithm){
             inputting(std::get<0>(neural), input);
-            mtl::forwardExecuteAll<0, LAYER_SIZE-1>(neural.network, calcSurface());
-            mtl::propagationTupleApply<LAYER_SIZE-1>(std::move(neural.network), std::move(_training_algorithm), std::move(target));
+            mtl::forwardExecuteAll<1, LAYER_SIZE>(neural, calcSurface());
+            mtl::propagationTupleApply<LAYER_SIZE-1>(neural.network, std::move(_training_algorithm), std::move(target));
         
     }
     
     template<class NetworkStruct>
     struct NNSolver<NetworkStruct>::calcSurface{
         template<std::size_t index>
-        void operator()(typename NetworkStruct::structure& network){
-            auto& layer = std::get<index+1>(network);
-            if(index != LAYER_SIZE-1){
-                for(int i=0; i<layer.size(); i++){
-                    double sum = sigma(std::get<index>(network),i);
-                    //layer[i].setStatus(sigmoid()(sum+layer[i].bias));
-                    layer[i].setStatus(tanh(sum+layer[i].bias));
-                }
-            }
+        void operator()(NetworkStruct& neural){
+            auto& layer = std::get<index>(neural.network);
+            static_for_nested<0,NetworkStruct::template getLayerSize<index>(), unit_iterating,index>(std::move(neural));
         }
         
+        template<std::size_t unit_index,std::size_t index>
+        struct unit_iterating{
+            template<class T>
+            void operator()(T&& network){
+                auto& unit = network.template getUnit<index,unit_index>();
+                double sum = sigma(network.template layerBackwordIterator<index,unit_index>(),unit_index);
+                unit.setStatus(tanh(sum+unit.bias));
+            }
+        };
         
         template<class Layer>
         static double sigma(Layer& input_layer,int unitid){

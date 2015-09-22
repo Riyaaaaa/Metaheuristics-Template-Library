@@ -133,6 +133,63 @@ namespace mtl{
                                                   );
     }
     
+    template<size_t index, size_t end, bool isEnd = index == end>
+    struct _static_for;
+    
+    template<size_t index, size_t end>
+    struct _static_for<index, end, false>
+    {
+        template<typename F, typename... Args>
+        static void Execute(F&& f, Args&&... args)
+        {
+            f.template operator()<index>(std::forward<Args>(args)...);
+            _static_for<index+1,end>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
+        }
+    };
+    
+    template<size_t index, size_t end>
+    struct _static_for<index, end, true>
+    {
+        template<class F, typename... Args>
+        static void Execute(F&& f, Args&&... args)
+        {
+        }
+    };
+    
+    template<std::size_t begin,std::size_t end,class F,class... Args>
+    void static_for(F&& f,Args... args){
+        _static_for<begin,end>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
+    }
+    
+    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,bool isEnd = index == end,std::size_t... indexes>
+    struct _static_for_nested;
+    
+    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes>
+    struct _static_for_nested<index, end, F, false, indexes...>
+    {
+        template<typename... Args>
+        static void Execute(Args&&... args)
+        {
+            F<index,indexes...> f;
+            f(std::forward<Args>(args)...);
+            _static_for_nested<index+1, end, F, index+1==end, indexes...>::Execute(std::forward<Args>(args)...);
+        }
+    };
+    
+    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes>
+    struct _static_for_nested<index, end, F, true, indexes...>
+    {
+        template<typename... Args>
+        static void Execute(Args&&... args)
+        {
+        }
+    };
+    
+    template<std::size_t begin,std::size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes,class... Args>
+    void static_for_nested(Args&&... args){
+        _static_for_nested<begin, end, F, begin==end, indexes...>::Execute(std::forward<Args>(args)...);
+    }
+    
     /* concatenate std::tuple */
     template <class Seq1, class Seq2>
     struct connect;
@@ -169,6 +226,23 @@ namespace mtl{
         typedef typename make_tuple_array_3dims< T, typename mtl::connect < Tuple, std::tuple<std::array<T<Next>,First> > >::type  , Next , Dims... >::type type;
     };
 
+    // Get Base Type of Array
+    template < class >
+    struct array_base
+    { // Ty must be array
+    };
+    template < class Ty, std::size_t size >
+    struct array_base < Ty[size] >
+    {
+        using type = Ty;
+    };
+    template < class Ty, std::size_t size >
+    struct array_base < std::array < Ty, size > >
+    {
+        using type = Ty;
+    };
+    template < class Ty >
+    using array_base_t = typename array_base < Ty >::type;
 }
 
 #endif
