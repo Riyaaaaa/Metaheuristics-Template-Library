@@ -18,14 +18,13 @@
 namespace mtl{
     
     template<class Layer>
-    static bool statusScanning(Layer layer, std::array<double, std::tuple_size<Layer>::value> target){
-        bool flag = true;
-        double epsilon = 0.01;
+    static double statusScanning(Layer layer, std::array<double, std::tuple_size<Layer>::value> target){
+        double RMSerror=0.0;
         for(int i=0; i<std::tuple_size<Layer>::value ; i++){
-            flag = flag & ( fabs((layer[i].output(threshold()) - target[i])) < epsilon );
-            std::cout << i << "th units output " << layer[i].output(threshold()) << (flag ? " ok" : " error ") << std::endl;
+            RMSerror += fabs(layer[i].getStatus() - target[i]);
+            std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
         }
-        return flag;
+        return RMSerror;
     }
     
     template<class Layer>
@@ -65,31 +64,6 @@ namespace mtl{
                             std::array<double, std::tuple_size< output_layer >::value>& target,
                             _TRAINING_OBJECT& _training_algorithm);
         
-        template<typename... Args>
-        const output_layer& trainingImpl(std::array<double, std::tuple_size< input_layer >::value>,
-                                         std::array<double, std::tuple_size< output_layer >::value>, Args&&... args);
-        template<typename... Args>
-        void makeTrainingPair(
-                              std::vector<
-                                            std::pair<
-                                                    std::array<double, std::tuple_size< input_layer >::value>,
-                                                    std::array<double, std::tuple_size< output_layer >::value>
-                                                    >
-                                        >&,
-                              std::array<double, std::tuple_size< input_layer >::value>,
-                              std::array<double, std::tuple_size< output_layer >::value>, Args&&... args);
-        
-        template<typename... Args>
-        void makeTrainingPair(
-                              std::vector<
-                              std::pair<
-                              std::array<double, std::tuple_size< input_layer >::value>,
-                              std::array<double, std::tuple_size< output_layer >::value>
-                              >
-                              >&,
-                              std::array<double, std::tuple_size< input_layer >::value>,
-                              std::array<double, std::tuple_size< output_layer >::value>);
-        
     private:
         struct calcSurface;
         
@@ -100,10 +74,13 @@ namespace mtl{
     template<class NetworkStruct>
     NNSolver<NetworkStruct>::NNSolver(double t_rate):TRAINIG_RATE(t_rate){
         surfaceExecuteAll<0, LAYER_SIZE>(neural.network, [](auto& surface){
+            std::random_device rnd;
+            std::mt19937 mt(rnd());
+            std::uniform_real_distribution<double> distribution(-1,1);
             for(int i=0; i<surface.size(); i++){
-                surface[i].setStatus(1);
-                surface[i].bias=0.5;
-                std::fill(surface[i].weight.begin(),surface[i].weight.end(),0.5);
+                surface[i].setStatus(distribution(mt));
+                surface[i].bias=(distribution(mt));
+                std::fill(surface[i].weight.begin(),surface[i].weight.end(),distribution(mt));
             }
         });
     }
@@ -176,23 +153,23 @@ namespace mtl{
                                                                     >
                                                             > training_list)
                   ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&{
-        const std::size_t TRAINIG_LIMITS = 1000;
-        bool flag;
+        const std::size_t TRAINIG_LIMITS = 2000;
         
                       _TRAINING_OBJECT<typename NetworkStruct::structure> training_object;
+                      double RMSerror = 0.0, best = 1e6;
                       
         for(int i=0; i<TRAINIG_LIMITS; i++){
-            flag = true;
+                        std::random_shuffle(training_list.begin(), training_list.end());
             for(auto& training_target: training_list){
-                if(statusScanning(solveAnswer(training_target.first),training_target.second))continue;
-                else {
-                    flag = false;
-                    regulateWeight(training_target.first, training_target.second, training_object);
-                }
+                regulateWeight(training_target.first, training_target.second, training_object);
+                RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
             }
-            if(flag)break;
+            std::cout << "RMSerror = " << RMSerror << std::endl;
+            if(best > RMSerror){ best = RMSerror; }
+            RMSerror = 0.0;
+            //else break;
         }
-        
+            std::cout << "best value = " << best << std::endl;
         return std::get< LAYER_SIZE-1 >(neural);
     }
     
@@ -201,12 +178,9 @@ namespace mtl{
     void NNSolver<NetworkStruct>::regulateWeight(std::array<double, std::tuple_size< input_layer >::value>& input,
                                                  std::array<double, std::tuple_size< output_layer >::value>& target,
                                                  _TRAINING_OBJECT& _training_algorithm){
-        do{
             inputting(std::get<0>(neural), input);
             mtl::forwardExecuteAll<0, LAYER_SIZE-1>(neural.network, calcSurface());
             mtl::propagationTupleApply<LAYER_SIZE-1>(std::move(neural.network), std::move(_training_algorithm), std::move(target));
-        }while(!statusScanning(std::get<LAYER_SIZE-1>(neural),target));
-        
         
     }
     
@@ -218,7 +192,8 @@ namespace mtl{
             if(index != LAYER_SIZE-1){
                 for(int i=0; i<layer.size(); i++){
                     double sum = sigma(std::get<index>(network),i);
-                    layer[i].setStatus(sigmoid()(sum+layer[i].bias));
+                    //layer[i].setStatus(sigmoid()(sum+layer[i].bias));
+                    layer[i].setStatus(tanh(sum+layer[i].bias));
                 }
             }
         }

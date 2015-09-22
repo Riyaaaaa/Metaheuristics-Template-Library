@@ -18,8 +18,19 @@ struct sigmoid{
 };
 
 struct threshold{
-    double operator()(double input,double T=0.5){ return input > T ? 1 : 0; }
+    double operator()(double input,double T=0){ return input > T ? 1 : -1; }
 };
+
+struct tanh_prime{
+    double operator()(double input,double T=0.5){ return 1-input*input; }
+};
+
+/*
+struct sigmoid : ActivationFunc<sigmoid>{
+    double activate(double input){ return 1 / (1. + exp(input));}
+    double activate_prime(double input){ return input * (1 - input);}
+};
+ */
 
 template<class Tuple>
 struct ErrorCorrection{
@@ -82,17 +93,9 @@ struct _Backpropagation<Tuple,true>{
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
         for(std::size_t i=0; i<target.size() ; i++){
-            out = layer[i].output(sigmoid());
-            delta[i] = out * (1 - out) * (target[i] - out);
-            
-            act_dot_delta += delta[i] * out;
-        }
-        
-        for(int i=0; i<layer.size(); i++){
-            for(int j=0; j<Size2; j++){
-                layer[i].bias += delta[j];
-                layer[i].weight[j] += act_dot_delta;
-            }
+            out = layer[i].getStatus();
+            //delta[i] = out * (1 - out) * (target[i] - out);
+            delta[i] = tanh_prime()(out) * (target[i] - out);
         }
         
         return delta;
@@ -107,7 +110,7 @@ struct _Backpropagation<Tuple,true>{
         
         for(auto& unit: input_layer){
             for(int i=0; i<Size2; i++){
-                unit.weight[i] += _trate * delta[i] * unit.output(sigmoid());
+                unit.weight[i] += _trate * delta[i] * unit.getStatus();
                 unit.bias += _trate * delta[i];
             }
         }
@@ -116,8 +119,9 @@ struct _Backpropagation<Tuple,true>{
             for(int i=0; i<Size2; i++){
                 propagation += input_layer[j].weight[i] * delta[i];
             }
-            out = input_layer[j].output(sigmoid());
-            new_delta[j] = out * (1-out) * propagation;
+            out = input_layer[j].getStatus();
+            //new_delta[j] = out * (1-out) * propagation;
+            new_delta[j] = tanh_prime()(out) * propagation;
         }
         
         return new_delta;

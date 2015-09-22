@@ -13,6 +13,14 @@
 #include <utility>
 #include "Utility.hpp"
 
+template<class T>
+struct ActivationFunc{
+    ActivationFunc(){
+        static_assert(std::is_same<decltype(std::declval<T>().activate(std::declval<double>())),double>::value,"activate is not defined");
+        static_assert(std::is_same<decltype(std::declval<T>().activate_prime(std::declval<double>())),double>::value,"activate_prime is not defined");
+    }
+};
+
 template<std::size_t _NEXT_LAYER_SIZE>
 class Unit{
 public:
