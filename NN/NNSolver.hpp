@@ -188,7 +188,6 @@ namespace mtl{
     struct NNSolver<NetworkStruct>::calcSurface{
         template<std::size_t index>
         void operator()(NetworkStruct& neural){
-            auto& layer = std::get<index>(neural.network);
             static_for_nested<0,NetworkStruct::template getLayerSize<index>(), unit_iterating,index>(std::move(neural));
         }
         

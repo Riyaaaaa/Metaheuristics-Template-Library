@@ -161,10 +161,13 @@ namespace mtl{
         _static_for<begin,end>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
     }
     
-    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,bool isEnd = index == end,std::size_t... indexes>
+    template<size_t index, size_t end,template<std::size_t...>class F,bool isEnd = index == end,std::size_t... indexes>
     struct _static_for_nested;
     
-    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes>
+    template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
+    using _static_for_nested_impl = _static_for_nested<index,end,F,index==end,indexes...>;
+    
+    template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
     struct _static_for_nested<index, end, F, false, indexes...>
     {
         template<typename... Args>
@@ -172,11 +175,11 @@ namespace mtl{
         {
             F<index,indexes...> f;
             f(std::forward<Args>(args)...);
-            _static_for_nested<index+1, end, F, index+1==end, indexes...>::Execute(std::forward<Args>(args)...);
+            _static_for_nested_impl<index+1, end, F, indexes...>::Execute(std::forward<Args>(args)...);
         }
     };
     
-    template<size_t index, size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes>
+    template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
     struct _static_for_nested<index, end, F, true, indexes...>
     {
         template<typename... Args>
@@ -185,7 +188,7 @@ namespace mtl{
         }
     };
     
-    template<std::size_t begin,std::size_t end,template<std::size_t,std::size_t>class F,std::size_t... indexes,class... Args>
+    template<std::size_t begin,std::size_t end,template<std::size_t...>class F,std::size_t... indexes,class... Args>
     void static_for_nested(Args&&... args){
         _static_for_nested<begin, end, F, begin==end, indexes...>::Execute(std::forward<Args>(args)...);
     }
