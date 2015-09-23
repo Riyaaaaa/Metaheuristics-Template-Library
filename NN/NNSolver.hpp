@@ -73,16 +73,20 @@ namespace mtl{
     
     template<class NetworkStruct>
     NNSolver<NetworkStruct>::NNSolver(double t_rate):TRAINIG_RATE(t_rate){
-        surfaceExecuteAll<0, LAYER_SIZE>(neural.network, [](auto& surface){
+        surfaceExecuteAll<0, LAYER_SIZE-1>(neural.network, [](auto& surface){
             std::random_device rnd;
             std::mt19937 mt(rnd());
             std::uniform_real_distribution<double> distribution(-1,1);
             for(int i=0; i<surface.size(); i++){
-                surface[i].setStatus(distribution(mt));
-                surface[i].bias=(distribution(mt));
+                surface[i].bias = 0;
                 std::fill(surface[i].weight.begin(),surface[i].weight.end(),distribution(mt));
             }
         });
+        auto& sensory = neural.template getLayer<LAYER_SIZE-1>();
+        for(auto& unit: sensory){
+            unit.bias = 0;
+            std::fill(unit.weight.begin(),unit.weight.end(),0);
+        }
     }
     
     template<class NetworkStruct>
@@ -157,6 +161,7 @@ namespace mtl{
         
                       _TRAINING_OBJECT<typename NetworkStruct::structure> training_object;
                       double RMSerror = 0.0, best = 1e6;
+                      NetworkStruct best_network;
                       
         for(int i=0; i<TRAINIG_LIMITS; i++){
                         std::random_shuffle(training_list.begin(), training_list.end());
@@ -165,11 +170,16 @@ namespace mtl{
                 RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
             }
             std::cout << "RMSerror = " << RMSerror << std::endl;
-            if(best > RMSerror){ best = RMSerror; }
+            if(best > RMSerror){ best = RMSerror; best_network = neural;}
             RMSerror = 0.0;
             //else break;
         }
             std::cout << "best value = " << best << std::endl;
+            neural = best_network;
+            for(auto& training_target: training_list){
+                regulateWeight(training_target.first, training_target.second, training_object);
+                RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+            }
         return std::get< LAYER_SIZE-1 >(neural);
     }
     

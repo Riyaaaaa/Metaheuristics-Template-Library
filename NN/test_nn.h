@@ -14,7 +14,7 @@
 #include<utility>
 
 void test_nn(){
-    mtl::NNSolver< FeedForward<2, 1, 2> > a(0.5);
+    mtl::NNSolver< FeedForward<2, 1, 4> > a(0.05);
     
     std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
     list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{-1} ));
