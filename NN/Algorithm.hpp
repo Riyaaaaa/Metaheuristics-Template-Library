@@ -21,6 +21,14 @@ struct threshold{
     double operator()(double input,double T=0){ return input > T ? 1 : -1; }
 };
 
+struct rectified_linear_units{
+    double operator()(double input){ return input >= 0 ? input : 0; }
+};
+
+struct no_activation{
+    double operator()(double input){ return input; }
+};
+
 struct tanh_prime{
     double operator()(double input,double T=0.5){ return 1-input*input; }
 };
@@ -41,21 +49,13 @@ struct ErrorCorrection{
     
     template<std::size_t Size1,std::size_t Size2>
     std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,output_layer_t&& target){
-        double out,act_dot_delta=0;
+        double out;
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
         for(std::size_t i=0; i<target.size() ; i++){
-            out = layer[i].output(sigmoid());
-            delta[i] = out * (1 - out) * (target[i] - out);
-
-            act_dot_delta += delta[i] * out;
-        }
-        
-        for(int i=0; i<layer.size(); i++){
-            for(int j=0; j<Size2; j++){
-                layer[i].bias += delta[j];
-                layer[i].weight[j] += act_dot_delta;
-            }
+            out = layer[i].getStatus();
+            //delta[i] = out * (1 - out) * (target[i] - out);
+            delta[i] = tanh_prime()(out) * (target[i] - out);
         }
         
         return delta;
@@ -66,7 +66,7 @@ struct ErrorCorrection{
         
         for(auto& unit: input_layer){
             for(int i=0; i<Size2; i++){
-                unit.weight[i] += _trate * delta[i] * unit.output(sigmoid());
+                unit.weight[i] += _trate * delta[i] * unit.getStatus();
                 unit.bias += _trate * delta[i];
             }
         }
@@ -89,7 +89,7 @@ struct _Backpropagation<Tuple,true>{
     
     template<std::size_t Size1,std::size_t Size2>
     std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,output_layer_t&& target){
-        double out,act_dot_delta=0;
+        double out;
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
         for(std::size_t i=0; i<target.size() ; i++){

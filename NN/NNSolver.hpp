@@ -11,6 +11,8 @@
 
 #include<iostream>
 #include<functional>
+#include<vector>
+#include<random>
 #include"Algorithm.hpp"
 #include"NNBase.hpp"
 #include"Utility.hpp"
