@@ -12,7 +12,7 @@
 #include"Boolean_Operation_Network.h"
 
 void test_nn(){
-    or_nn();
+    xor_nn();
 }
 
 #endif

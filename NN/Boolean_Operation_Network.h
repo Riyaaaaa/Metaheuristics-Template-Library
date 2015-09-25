@@ -15,7 +15,7 @@
 #include<utility>
 
 void and_nn(){
-    mtl::NNSolver< FeedForward<2, 1> > solver(0.05);
+    mtl::NNSolver< mtl::FeedForward<2, 1> > solver(0.05);
     
     std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
     list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{1} ));
@@ -23,7 +23,7 @@ void and_nn(){
     list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{-1} ));
     list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
     
-    solver.training<ErrorCorrection>(list);
+    solver.training<mtl::ErrorCorrection>(list);
     
     std::cout << "-------result--------" << std::endl;
     std::ofstream ofs("and_result.csv");
@@ -31,14 +31,14 @@ void and_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(no_activation()) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation()) << std::endl;
         }
     }
     std::cout << std::endl;
 }
 
 void or_nn(){
-    mtl::NNSolver< FeedForward<2, 1> > solver(0.05);
+    mtl::NNSolver< mtl::FeedForward<2, 1> > solver(0.05);
     
     std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
     list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{1} ));
@@ -46,7 +46,7 @@ void or_nn(){
     list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{1} ));
     list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
     
-    solver.training<ErrorCorrection>(list);
+    solver.training<mtl::ErrorCorrection>(list);
     
     std::cout << "-------result--------" << std::endl;
     std::ofstream ofs("or_result.csv");
@@ -54,14 +54,14 @@ void or_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(no_activation()) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation()) << std::endl;
         }
     }
     std::cout << std::endl;
 }
 
 void xor_nn(){
-    mtl::NNSolver< FeedForward<2, 1, 4> > solver(0.05);
+    mtl::NNSolver< mtl::FeedForward<2, 1, 4> > solver(0.05);
     
     std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
     list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{-1} ));
@@ -69,7 +69,7 @@ void xor_nn(){
     list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{1} ));
     list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
     
-    solver.training<Backpropagation>(list);
+    solver.training<mtl::Backpropagation>(list);
     
     std::cout << "-------result--------" << std::endl;
     std::ofstream ofs("result.csv");
@@ -77,7 +77,7 @@ void xor_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(no_activation()) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation()) << std::endl;
         }
     }
     std::cout << std::endl;

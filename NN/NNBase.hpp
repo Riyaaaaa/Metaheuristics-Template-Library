@@ -12,12 +12,15 @@
 #include <array>
 #include <utility>
 #include "Utility.hpp"
+#include "../configuration.h"
+
+LIB_SCOPE_BEGIN()
 
 template<class T>
 struct ActivationFunc{
     ActivationFunc(){
         static_assert(std::is_same<decltype(std::declval<T>().activate(std::declval<double>())),double>::value,"activate is not defined");
-        static_assert(std::is_same<decltype(std::declval<T>().activate_prime(std::declval<double>())),double>::value,"activate_prime is not defined");
+        static_assert(std::is_same<decltype(std::declval<T>().activateDerivative(std::declval<double>())),double>::value,"activateDerivative is not defined");
     }
 };
 
@@ -92,16 +95,20 @@ auto FeedForward<_First,_Last,Args...>::layerBackwordIterator()
     return std::get<layer_index-1>(network);
 }
 
+
+LIB_SCOPE_END()
+
 namespace std{
     template< std::size_t I, std::size_t _First , std::size_t _Last , std::size_t... Args>
     constexpr auto&
-    get( FeedForward<_First,_Last,Args...>& t ){
+    get( mtl::FeedForward<_First,_Last,Args...>& t ){
         return std::get<I>(t.network);
     }
     template<std::size_t... Args>
-    struct tuple_size<FeedForward<Args...>>{
-        static constexpr std::size_t value = FeedForward<Args...>::LAYER_SIZE;
+    struct tuple_size<mtl::FeedForward<Args...>>{
+        static constexpr std::size_t value = mtl::FeedForward<Args...>::LAYER_SIZE;
     };
 }
+
 
 #endif /* defined(__MTL_Development__NNBase__) */

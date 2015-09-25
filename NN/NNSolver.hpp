@@ -17,7 +17,7 @@
 #include"NNBase.hpp"
 #include"Utility.hpp"
 
-namespace mtl{
+LIB_SCOPE_BEGIN()
     
     template<class Layer>
     static double statusScanning(Layer layer, std::array<double, std::tuple_size<Layer>::value> target){
@@ -159,7 +159,7 @@ namespace mtl{
                                                                     >
                                                             > training_list)
                   ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&{
-        const std::size_t TRAINIG_LIMITS = 2000;
+        const std::size_t TRAINIG_LIMITS = 5000;
         
                       _TRAINING_OBJECT<typename NetworkStruct::structure> training_object;
                       double RMSerror = 0.0, best = 1e6;
@@ -210,6 +210,7 @@ namespace mtl{
                 auto& unit = network.template getUnit<index,unit_index>();
                 double sum = sigma(network.template layerBackwordIterator<index,unit_index>(),unit_index);
                 unit.setStatus(tanh(sum+unit.bias));
+                //unit.setStatus(sigmoid()(sum+unit.bias));
             }
         };
         
@@ -223,6 +224,6 @@ namespace mtl{
         }
     };
     
-}
+LIB_SCOPE_END()
 
 #endif

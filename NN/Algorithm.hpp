@@ -12,6 +12,9 @@
 #include<cmath>
 #include"Utility.hpp"
 #include"NNBase.hpp"
+#include"../configuration.h"
+
+LIB_SCOPE_BEGIN()
 
 struct sigmoid{
     double operator()(double input,double a=1)  { return 1 / (1. + exp(-a*input));}
@@ -30,15 +33,20 @@ struct no_activation{
 };
 
 struct tanh_prime{
-    double operator()(double input,double T=0.5){ return 1-input*input; }
+    double operator()(double input){ return 1-input*input; }
 };
 
 /*
 struct sigmoid : ActivationFunc<sigmoid>{
     double activate(double input){ return 1 / (1. + exp(input));}
-    double activate_prime(double input){ return input * (1 - input);}
+    double activateDerivative(double input){ return input * (1 - input);}
 };
  */
+
+struct tanh : ActivationFunc<mtl::tanh>{
+    double activate(double input){ return 1 / (1. + exp(input));}
+    double activateDerivative(double input){ return input * (1 - input);}
+};
 
 template<class Tuple>
 struct ErrorCorrection{
@@ -96,6 +104,7 @@ struct _Backpropagation<Tuple,true>{
             out = layer[i].getStatus();
             //delta[i] = out * (1 - out) * (target[i] - out);
             delta[i] = tanh_prime()(out) * (target[i] - out);
+            layer[i].bias += _trate * delta[i];
         }
         
         return delta;
@@ -111,7 +120,6 @@ struct _Backpropagation<Tuple,true>{
         for(auto& unit: input_layer){
             for(int i=0; i<Size2; i++){
                 unit.weight[i] += _trate * delta[i] * unit.getStatus();
-                unit.bias += _trate * delta[i];
             }
         }
         
@@ -122,6 +130,7 @@ struct _Backpropagation<Tuple,true>{
             out = input_layer[j].getStatus();
             //new_delta[j] = out * (1-out) * propagation;
             new_delta[j] = tanh_prime()(out) * propagation;
+            input_layer[j].bias += _trate * new_delta[j];
         }
         
         return new_delta;
@@ -132,4 +141,7 @@ struct _Backpropagation<Tuple,true>{
 template<class Tuple>
 struct _Backpropagation<Tuple,false>;
 
+LIB_SCOPE_END()
+    
 #endif
+
