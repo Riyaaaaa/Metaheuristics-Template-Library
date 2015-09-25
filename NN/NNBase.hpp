@@ -49,8 +49,8 @@ double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
 }
 
 /* Feed forward perceptron class */
-/* This is the Perceptron model not in the recursive structure. */
-/* This is implemented by std::tuple. Therefore, this require tuple utility(See Utility.hpp).  */
+/* This is the Perceptron model that does not have the recursive structure. */
+/* This is implemented by std::tuple. Therefore, this require tuple mtl-utility(See Utility.hpp).  */
 
 template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 class FeedForward{
