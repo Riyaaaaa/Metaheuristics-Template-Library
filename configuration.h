@@ -11,5 +11,7 @@
 
 #define LIB_SCOPE_BEGIN() namespace mtl{
 #define LIB_SCOPE_END()   }
+#define DEBUG_MTL
+#define STATIC_NETWORK
 
 #endif

@@ -26,7 +26,7 @@ static double statusScanning(Layer layer, std::array<double, std::tuple_size<Lay
     for(int i=0; i<std::tuple_size<Layer>::value ; i++){
         RMSerror += fabs(layer[i].getStatus() - target[i]);
 #ifdef DEBUG_MTL
-        std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
+        //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
 #endif
     }
     return RMSerror;
@@ -89,12 +89,12 @@ NNSolver<NetworkStruct,ActivationObject>::NNSolver(double t_rate):TRAINIG_RATE(t
         std::uniform_real_distribution<double> distribution(-1,1);
         for(int i=0; i<surface.size(); i++){
             surface[i].bias = 0;
-            std::fill(surface[i].weight.begin(),surface[i].weight.end(),distribution(mt));
+            std::fill(surface[i].weight.begin(),surface[i].weight.end(),/*distribution(mt)*/2.);
         }
     });
     auto& sensory = neural.template getLayer<LAYER_SIZE-1>();
     for(auto& unit: sensory){
-        unit.bias = 0;
+        unit.bias = 2.;
         std::fill(unit.weight.begin(),unit.weight.end(),0);
     }
 }
@@ -167,30 +167,33 @@ auto NNSolver<NetworkStruct,ActivationObject>::training(std::vector<
                                        >
                                        > training_list)
 ->const typename NetworkStruct::template layer_type<LAYER_SIZE-1>&{
-    const std::size_t TRAINIG_LIMITS = 5000;
+    const std::size_t TRAINIG_LIMITS = 100;
     
     _TRAINING_OBJECT<typename NetworkStruct::structure,ActivationObject> training_object;
     double RMSerror = 0.0, best = 1e6;
     NetworkStruct best_network;
+    std::random_device rd;
+    std::mt19937 mt(rd());
     
     for(int i=0; i<TRAINIG_LIMITS; i++){
 #ifdef DEBUG_MTL
-        std::cout << "step " << i << std::endl;
+        //std::cout << "step " << i << std::endl;
 #endif
-        std::random_shuffle(training_list.begin(), training_list.end());
+        std::shuffle(training_list.begin(), training_list.end(),mt);
         for(auto& training_target: training_list){
             regulateWeight(training_target.first, training_target.second, training_object);
             RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
         }
 #ifdef DEBUG_MTL
-        std::cout << "RMSerror = " << RMSerror << std::endl;
+        //std::cout << "RMSerror = " << RMSerror << std::endl;
+        std::cout << i << ',' << RMSerror << std::endl;
 #endif
         if(best > RMSerror){ best = RMSerror; best_network = neural;}
         RMSerror = 0.0;
         //else break;
         }
 #ifdef DEBUG_MTL
-        std::cout << "best value = " << best << std::endl;
+        //std::cout << "best value = " << best << std::endl;
 #endif
         neural = best_network;
         for(auto& training_target: training_list){

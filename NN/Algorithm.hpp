@@ -32,7 +32,7 @@ struct no_activation_af : ActivationFunc<no_activation_af>{
 };
 
 struct sigmoid_af : ActivationFunc<sigmoid_af>{
-    static double activate(double input){ return 1 / (1. + exp(input));}
+    static double activate(double input){ return 1 / (1. + exp(-input));}
     static double activateDerivative(double input){ return input * (1 - input);}
 };
 
@@ -57,8 +57,10 @@ struct ErrorCorrection{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
-            delta[i] = ao.activateDerivative(out) * (target[i] - out);
-            layer[i].bias += _trate * delta[i];
+            //delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            delta[i] = ((1 + out) / out) * (out - target[i]);
+            //delta[i] = (out - target[i]);
+            layer[i].bias -= _trate * delta[i];
         }
         
         return delta;
@@ -69,7 +71,7 @@ struct ErrorCorrection{
         
         for(auto& unit: input_layer){
             for(int i=0; i<Size2; i++){
-                unit.weight[i] += _trate * delta[i] * unit.getStatus();
+                unit.weight[i] -= _trate * delta[i] * unit.getStatus();
             }
         }
     }
