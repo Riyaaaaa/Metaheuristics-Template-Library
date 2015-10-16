@@ -95,6 +95,8 @@ void xor_nn(){
         }
     }
     std::cout << std::endl;
+
+    if(!solver.exportNetwork("xor_network_parameters.txt"))std::cout << "faild export" << std::endl;
 }
 
 

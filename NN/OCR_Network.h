@@ -26,7 +26,6 @@ std::vector< std::pair< std::array<double,InputVectorSize> , std::array<double,O
     
     if (!filestream.is_open())
     {
-        // ファイルが開けなかった場合は終了する
         return list;
     }
     
@@ -34,60 +33,54 @@ std::vector< std::pair< std::array<double,InputVectorSize> , std::array<double,O
     
     while (!filestream.eof())
     {
-        // １行読み込む
         std::string buffer;
         filestream >> buffer;
-        
-        // ファイルから読み込んだ１行の文字列を区切り文字で分けてリストに追加する
-        std::istringstream streambuffer(buffer); // 文字列ストリーム
-        std::string token;                       // １セル分の文字列
+
+        std::istringstream streambuffer(buffer);
+        std::string token;
         std::array<double,InputVectorSize> input;
         std::array<double,OutputVectorSize> output;
         
         if(buffer.empty())break;
         
-        for(int i=0; i<OutputVectorSize; i++){
-            getline(streambuffer, token, delimiter);
-            output[i] = std::stoi(token);
-        }
+        std::fill(output.begin(),output.end(),0);
+        
+        getline(streambuffer, token, delimiter);
+        output[std::stoi(token)]=1;
+            
         for(int i=0; i<InputVectorSize; i++){
             getline(streambuffer, token, delimiter);
             input[i] = std::stoi(token);
         }
-        // １行分の文字列を出力引数のリストに追加する
         list.push_back(std::make_pair(input,output));
     }
     
     for (int row = 0; row < list.size(); row++)
     {
-        // １セルずつ読み込んでコンソールに出力する
         for (int column = 0; column < list[row].first.size(); column++)
         {
-            std::cout << list[row].first[column];
-            // 末尾の列でない場合はカンマを出力する
             if (column < list[row].first.size() - 1)
             {
-                std::cout << ",";
             }
         }
-        std::cout << std::endl;
         for (int column = 0; column < list[row].second.size(); column++)
         {
-            std::cout << list[row].second[column];
-            // 末尾の列でない場合はカンマを出力する
             if (column < list[row].second.size() - 1)
             {
-                std::cout << ",";
             }
         }
-        std::cout << std::endl;
     }
     
     return list;
 }
 
 void ocr_nn(){
-    auto trainig_sample = import_csv<784,1>("ocr_test.csv");
+    auto trainig_sample = import_csv<784,10>("../ocr_test.csv");
+    mtl::NNSolver< mtl::FeedForward<784,10,784>, mtl::sigmoid_af > solver(0.05);
+    
+    solver.training<mtl::Backpropagation>(trainig_sample);
+    
+    std::cout << "-------END--------" << std::endl;
 }
 
 #endif

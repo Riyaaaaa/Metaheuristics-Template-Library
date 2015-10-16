@@ -64,7 +64,7 @@ struct forwardExecute<index, end, false>
     template<typename Tuple, typename F, typename... Args>
     static void Execute(Tuple&& tuple, F&& f, Args&&... args)
     {
-        f.template operator()<index>(std::forward<Tuple>(tuple),std::forward<Args>(args)...);
+        f(std::get<index>(tuple),std::forward<Args>(args)...);
         forwardExecute<index+1,end>::Execute(
                                              std::forward<Tuple>(tuple),
                                              std::forward<F>(f),
@@ -158,40 +158,39 @@ struct _static_for<index, end, true>
 };
 
 template<std::size_t begin,std::size_t end,class F,class... Args>
-void static_for(F&& f,Args... args){
+void static_for(F&& f,Args&&... args){
     _static_for<begin,end>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
 }
 
-template<size_t index, size_t end,template<std::size_t...>class F,bool isEnd = index == end,std::size_t... indexes>
+template<size_t index, size_t end,class F,bool isEnd = index == end,std::size_t... indexes>
 struct _static_for_nested;
 
-template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
+template<size_t index, size_t end,class F,std::size_t... indexes>
 using _static_for_nested_impl = _static_for_nested<index,end,F,index==end,indexes...>;
 
-template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
+template<size_t index, size_t end,class F,std::size_t... indexes>
 struct _static_for_nested<index, end, F, false, indexes...>
 {
     template<typename... Args>
-    static void Execute(Args&&... args)
+    static void Execute(F&& f,Args&&... args)
     {
-        F<index,indexes...> f;
-        f(std::forward<Args>(args)...);
-        _static_for_nested_impl<index+1, end, F, indexes...>::Execute(std::forward<Args>(args)...);
+        f.template operator()<index,indexes...>(std::forward<Args>(args)...);
+        _static_for_nested_impl<index+1, end, F, indexes...>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
     }
 };
 
-template<size_t index, size_t end,template<std::size_t...>class F,std::size_t... indexes>
+template<size_t index, size_t end ,class F,std::size_t... indexes>
 struct _static_for_nested<index, end, F, true, indexes...>
 {
     template<typename... Args>
-    static void Execute(Args&&... args)
+    static void Execute(F&& f,Args&&... args)
     {
     }
 };
 
-template<std::size_t begin,std::size_t end,template<std::size_t...>class F,std::size_t... indexes,class... Args>
-void static_for_nested(Args&&... args){
-    _static_for_nested<begin, end, F, begin==end, indexes...>::Execute(std::forward<Args>(args)...);
+template<std::size_t begin,std::size_t end,std::size_t... indexes,class F,class... Args>
+void static_for_nested(F&& f,Args&&... args){
+    _static_for_nested<begin, end, F, begin==end, indexes...>::Execute(std::forward<F>(f),std::forward<Args>(args)...);
 }
 
 /* concatenate std::tuple */

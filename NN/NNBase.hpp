@@ -28,7 +28,7 @@ template<std::size_t _NEXT_LAYER_SIZE>
 class Unit{
 public:
     double bias=0.5;
-    std::array<double,_NEXT_LAYER_SIZE> weight;
+    std::array<float,_NEXT_LAYER_SIZE> weight;
     
     template<class F>
     double output(F&& f);
@@ -39,7 +39,7 @@ public:
     void    setStatus(double _s){_status = _s;}
     double  getStatus(){return _status;}
 private:
-    double _status;
+    float _status;
 };
 
 template<std::size_t _NEXT_LAYER_SIZE>
@@ -83,7 +83,7 @@ template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 template<std::size_t layer_index,std::size_t unit_index>
 auto FeedForward<_First,_Last,Args...>::layerForwardIterator()
 ->typename std::tuple_element<layer_index+1, structure>::type&{
-    static_assert(layer_index+1 < LAYER_SIZE,"BUFFER OVER");
+    static_assert(layer_index+1 < LAYER_SIZE,"OUT OF RANGE");
     return std::get<layer_index+1>(network);
 }
 
@@ -91,7 +91,7 @@ template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 template<std::size_t layer_index,std::size_t unit_index>
 auto FeedForward<_First,_Last,Args...>::layerBackwordIterator()
 ->typename std::tuple_element<layer_index-1, structure>::type&{
-    static_assert((long)layer_index-1 >= 0,"BUFFER OVER");
+    static_assert((long)layer_index-1 >= 0,"OUT OF RANGE");
     return std::get<layer_index-1>(network);
 }
 

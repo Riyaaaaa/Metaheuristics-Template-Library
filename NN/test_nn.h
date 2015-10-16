@@ -25,7 +25,8 @@ void unit_test(){
 
 
 void test_nn(){
-    unit_test();
+    xor_nn();
+    //xor_nn();
 }
 
 #endif
