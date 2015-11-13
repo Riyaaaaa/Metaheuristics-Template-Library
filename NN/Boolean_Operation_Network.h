@@ -45,7 +45,7 @@ void and_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af().activate) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af::activate) << std::endl;
         }
     }
     std::cout << std::endl;
@@ -68,7 +68,7 @@ void or_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af().activate) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af::activate) << std::endl;
         }
     }
     std::cout << std::endl;
@@ -91,7 +91,7 @@ void xor_nn(){
     for(double x=-1.0; x<=1.0; x += 0.02){
         for(double y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( std::array<double,2>{x,y} );
-            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af().activate) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af::activate) << std::endl;
         }
     }
     std::cout << std::endl;

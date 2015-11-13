@@ -76,9 +76,9 @@ std::vector< std::pair< std::array<double,InputVectorSize> , std::array<double,O
 
 void ocr_nn(){
     auto trainig_sample = import_csv<784,10>("../ocr_test.csv");
-    mtl::NNSolver< mtl::FeedForward<784,10,784>, mtl::sigmoid_af > solver(0.05);
+    //mtl::NNSolver< mtl::FeedForward<784,10,784>, mtl::sigmoid_af > solver(0.05);
     
-    solver.training<mtl::Backpropagation>(trainig_sample);
+    //solver.training<mtl::Backpropagation>(trainig_sample);
     
     std::cout << "-------END--------" << std::endl;
 }

@@ -11,6 +11,7 @@
 
 #include<iostream>
 #include<functional>
+#include<algorithm>
 #include<vector>
 #include<random>
 #include<cmath>
