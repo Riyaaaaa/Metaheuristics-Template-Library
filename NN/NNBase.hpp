@@ -33,8 +33,30 @@ public:
     template<class F>
     double output(F&& f);
     
+    template<std::size_t PREV_LAYER_SIZE,std::size_t _iSize>
+    double input(const std::array<Unit<PREV_LAYER_SIZE> , _iSize>& surface);
+    
+    void    setStatus(double _s){_status = _s;}
+    double  getStatus()const{return _status;}
+private:
+    float _status;
+};
+template<std::size_t _NEXT_LAYER_SIZE>
+template<class F>
+double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
+    return f(_status+bias);
+}
+
+class Unit_Dy{
+public:
+    double bias=0.5;
+    std::vector<float> weight;
+    
+    template<class F>
+    double output(F&& f);
+    
     template<std::size_t _iSize>
-    double input(const std::array<Unit , _iSize>& surface);
+    double input(const std::array<Unit_Dy , _iSize>& surface);
     
     void    setStatus(double _s){_status = _s;}
     double  getStatus(){return _status;}
@@ -42,9 +64,8 @@ private:
     float _status;
 };
 
-template<std::size_t _NEXT_LAYER_SIZE>
 template<class F>
-double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
+double Unit_Dy::output(F&& f){
     return f(_status+bias);
 }
 
@@ -52,11 +73,17 @@ double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
 /* This is the Perceptron model that does not have the recursive structure. */
 /* This is implemented by std::tuple. Therefore, this require tuple mtl-utility(See Utility.hpp).  */
 
+struct STATIC{};
+struct DYNAMIC{};
+
 template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 class FeedForward{
 public:
-    typedef typename mtl::make_tuple_array_3dims<Unit, std::tuple<>, _First, Args..., _Last>::type structure; //network structure
-    static constexpr std::size_t LAYER_SIZE = std::tuple_size<structure>::value;
+	//Structure of network determined at the time of compilation
+    typedef typename mtl::make_tuple_array_3dims<Unit, std::tuple<>, _First, Args..., _Last>::type structure;
+	typedef STATIC tag;
+
+	static constexpr std::size_t LAYER_SIZE = std::tuple_size<structure>::value;
     
     structure network;
     
@@ -96,6 +123,35 @@ auto FeedForward<_First,_Last,Args...>::layerBackwordIterator()
 }
 
 
+class FeedForward_Dy{
+public:
+	//Structure of network determined at the runtime
+    typedef typename std::vector<std::vector<Unit_Dy>> structure;
+	typedef DYNAMIC tag;
+	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
+	typedef unsigned int size_t;;
+    
+    structure network;
+	
+	size_t getNumberOfLayer(){ return network.size(); }
+    size_t getNumberOfUnits(size_t layer_index){return network[layer_index].size();}
+    
+    std::vector<Unit_Dy>& getLayer(size_t layer_index){return network[layer_index];};
+    
+    Unit_Dy& getUnit(size_t layer_index, size_t unit_index){return network[layer_index][unit_index];};
+   
+    std::vector<Unit_Dy>& layerForwardIterator(size_t layer_index,size_t unit_index); //forward iterator for propagation.
+    
+    std::vector<Unit_Dy>& layerBackwordIterator(size_t layer_index,size_t unit_index);//backward iterator for propagation.
+};
+
+std::vector<Unit_Dy>& FeedForward_Dy::layerForwardIterator(size_t layer_index,size_t unit_index){
+	return network[layer_index+1];
+}
+
+std::vector<Unit_Dy>& FeedForward_Dy::layerBackwordIterator(size_t layer_index,size_t unit_index){
+	return network[layer_index-1];
+}
 LIB_SCOPE_END()
 
 namespace std{
