@@ -51,7 +51,7 @@ struct ErrorCorrection{
     actiavation_type ao;
     
     template<std::size_t Size1,std::size_t Size2>
-    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,output_layer_t& target){
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,const output_layer_t& target){
         double out;
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
@@ -66,7 +66,7 @@ struct ErrorCorrection{
     }
     
     template<std::size_t Size1,std::size_t Size2>
-    void operator()(std::array<Unit<Size2>,Size1>& input_layer,output_layer_t& target, std::array<double,Size2>&& delta){
+    void operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, std::array<double,Size2>&& delta){
         for(auto& unit: input_layer){
             for(int i=0; i<Size2; i++){
                 unit.weight[i] -= _trate * delta[i] * unit.getStatus();
@@ -95,7 +95,7 @@ struct _Backpropagation<Tuple,ActivationObject,true>{
     }
     
     template<std::size_t Size1,std::size_t Size2>
-    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,output_layer_t& target){
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,const output_layer_t& target){
         double out;
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
@@ -109,7 +109,7 @@ struct _Backpropagation<Tuple,ActivationObject,true>{
     }
     
     template<std::size_t Size1,std::size_t Size2>
-    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,output_layer_t& target, std::array<double,Size2>&& delta){
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, std::array<double,Size2>&& delta){
 
         double out, propagation=0;
         

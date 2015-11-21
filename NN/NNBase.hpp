@@ -37,7 +37,7 @@ public:
     double input(const std::array<Unit<PREV_LAYER_SIZE> , _iSize>& surface);
     
     void    setStatus(double _s){_status = _s;}
-    double  getStatus(){return _status;}
+    double  getStatus()const{return _status;}
 private:
     float _status;
 };
@@ -132,8 +132,9 @@ public:
 	typedef unsigned int size_t;;
     
     structure network;
-    
-    size_t getLayerSize(size_t layer_index){return network[layer_index].size();}
+	
+	size_t getNumberOfLayer(){ return network.size(); }
+    size_t getNumberOfUnits(size_t layer_index){return network[layer_index].size();}
     
     std::vector<Unit_Dy>& getLayer(size_t layer_index){return network[layer_index];};
     
