@@ -41,8 +41,15 @@ struct tanh_af : ActivationFunc<mtl::tanh_af>{
     static double activateDerivative(double input){ return 1 - input*input;}
 };
 
+template<class Tuple,class ActivationObject,class Tag>
+struct _ErrorCorrection;
+
+template<class NetworkStruct,class ActivationObject>
+using ErrorCorrection = _ErrorCorrection<typename NetworkStruct::structure,ActivationObject,typename NetworkStruct::tag>;
+
+
 template<class Tuple,class ActivationObject>
-struct ErrorCorrection{
+struct _ErrorCorrection<Tuple,ActivationObject,STATIC>{
     typedef std::remove_reference_t<Tuple> Tuple_t;
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     typedef ActivationObject actiavation_type;
@@ -75,24 +82,33 @@ struct ErrorCorrection{
     }
 };
 
-template<class Tuple,class ActivationObject,bool isSensory = (std::tuple_size<Tuple>::value > 2) >
+template<class Tuple,class ActivationObject,class Tag,bool isSensory>
 struct _Backpropagation;
+
+template<class NetworkStruct,class ActivationObject,class Tag>
+struct Backpropagation_traits;
+
+template<class Tuple,class ActivationObject>
+struct Backpropagation_traits<Tuple,ActivationObject,STATIC> {
+    using type = _Backpropagation<Tuple, ActivationObject, STATIC, (std::tuple_size<Tuple>::value > 2)>;
+};
+
+template<class Tuple,class ActivationObject>
+struct Backpropagation_traits<Tuple,ActivationObject,DYNAMIC> {
+    using type = _Backpropagation<Tuple, ActivationObject, DYNAMIC, true>;
+};
 /*  Back propagation requires three or more layers */
 
-template<class Tuple,class ActivationObject>
-using Backpropagation = _Backpropagation<Tuple,ActivationObject>;
+template<class NetworkStruct,class ActivationObject>
+using Backpropagation = typename Backpropagation_traits<typename NetworkStruct::structure,ActivationObject,typename NetworkStruct::tag>::type;
 
 template<class Tuple,class ActivationObject>
-struct _Backpropagation<Tuple,ActivationObject,true>{
+struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
     typedef std::remove_reference_t<Tuple> Tuple_t;
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     
     const double _trate = 0.15;
     ActivationObject ao;
-    
-    _Backpropagation(){
-        std::cout << "test" << std::endl;
-    }
     
     template<std::size_t Size1,std::size_t Size2>
     std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,const output_layer_t& target){
@@ -134,9 +150,54 @@ struct _Backpropagation<Tuple,ActivationObject,true>{
     }
 };
 
-/* Network does not have three or more layers */
 template<class Tuple,class ActivationObject>
-struct _Backpropagation<Tuple,ActivationObject,false>;
+struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
+    typedef std::vector<float> output_layer_t;
+    
+    const double _trate = 0.15;
+    ActivationObject ao;
+    
+    std::vector<float> operator()(std::vector<Unit_Dy>& layer,const output_layer_t& target){
+        double out;
+        std::vector<float> delta(target.size());
+        
+        for(std::size_t i=0; i<target.size() ; i++){
+            out = layer[i].getStatus();
+            delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            layer[i].bias += _trate * delta[i];
+        }
+        
+        return delta;
+    }
+
+    std::vector<float> operator()(std::vector<Unit_Dy>& input_layer,const output_layer_t& target, const std::vector<float>& delta){
+        
+        double out, propagation=0;
+        
+        std::vector<float> new_delta(input_layer.size());
+        
+        for(auto& unit: input_layer){
+            for(int i=0; i<delta.size(); i++){
+                unit.weight[i] += _trate * delta[i] * unit.getStatus();
+            }
+        }
+        
+        for(int j=0; j<input_layer.size(); j++){
+            for(int i=0; i<delta.size(); i++){
+                propagation += input_layer[j].weight[i] * delta[i];
+            }
+            out = input_layer[j].getStatus();
+            new_delta[j] = ao.activateDerivative(out) * propagation;
+            input_layer[j].bias += _trate * new_delta[j];
+        }
+        
+        return new_delta;
+    }
+};
+
+/* Network does not have three or more layers */
+template<class Tuple,class ActivationObject,class Tag>
+struct _Backpropagation<Tuple,ActivationObject,Tag,false>;
 
 LIB_SCOPE_END()
     

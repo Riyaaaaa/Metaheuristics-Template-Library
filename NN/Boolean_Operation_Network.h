@@ -75,22 +75,29 @@ void or_nn(){
 }
 
 void xor_nn(){
-    mtl::NNSolver< mtl::FeedForward<2, 1, 4>,mtl::tanh_af > solver(0.05);
+    std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+    network_struct[0] = 2;
+    network_struct[1] = 4;
+    network_struct[2] = 1;
     
-    std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
-    list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{-1} ));
-    list.push_back(std::make_pair( std::array<double,2>{1,-1}, std::array<double,1>{1} ));
-    list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{1} ));
-    list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
+    mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af > solver(0.05,network_struct);
+    
+    solver.setNetworkStruct(network_struct);
+    
+    std::vector< std::pair< std::vector<float>, std::vector<float> > > list;
+    list.push_back(std::make_pair( std::vector<float>{1,1}, std::vector<float>{-1} ));
+    list.push_back(std::make_pair( std::vector<float>{-1,1}, std::vector<float>{1} ));
+    list.push_back(std::make_pair( std::vector<float>{1,-1}, std::vector<float>{1} ));
+    list.push_back(std::make_pair( std::vector<float>{-1,-1}, std::vector<float>{-1} ));
     
     solver.training<mtl::Backpropagation>(list);
     
     std::cout << "-------END--------" << std::endl;
     std::ofstream ofs("xor_result.csv");
     ofs << "x," << "y," << "z" << std::endl;
-    for(double x=-1.0; x<=1.0; x += 0.02){
-        for(double y=-1.0; y<=1.0; y += 0.02){
-            auto output = solver.solveAnswer( std::array<double,2>{x,y} );
+    for(float x=-1.0; x<=1.0; x += 0.02){
+        for(float y=-1.0; y<=1.0; y += 0.02){
+            auto output = solver.solveAnswer( std::vector<float>{x,y} );
             ofs << x << "," << y << "," << output[0].output(mtl::no_activation_af::activate) << std::endl;
         }
     }

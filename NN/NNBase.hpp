@@ -59,7 +59,7 @@ public:
     double input(const std::array<Unit_Dy , _iSize>& surface);
     
     void    setStatus(double _s){_status = _s;}
-    double  getStatus(){return _status;}
+    double  getStatus()const{return _status;}
 private:
     float _status;
 };
@@ -129,21 +129,44 @@ public:
     typedef typename std::vector<std::vector<Unit_Dy>> structure;
 	typedef DYNAMIC tag;
 	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
-	typedef unsigned int size_t;;
+	typedef unsigned int size_t;
     
     structure network;
 	
-	size_t getNumberOfLayer(){ return network.size(); }
-    size_t getNumberOfUnits(size_t layer_index){return network[layer_index].size();}
+	size_t getNumberOfLayers(){ return static_cast<size_t>(network.size()); }
+    size_t getNumberOfUnits(size_t layer_index){return static_cast<size_t>(network[layer_index].size());}
     
     std::vector<Unit_Dy>& getLayer(size_t layer_index){return network[layer_index];};
     
     Unit_Dy& getUnit(size_t layer_index, size_t unit_index){return network[layer_index][unit_index];};
+    
+    void setNumberOfLayers(size_t size) { network.resize(size); }
+    void setNumberOfUnits(size_t layer_index, size_t size) { network[layer_index].resize(size); };
    
     std::vector<Unit_Dy>& layerForwardIterator(size_t layer_index,size_t unit_index); //forward iterator for propagation.
-    
     std::vector<Unit_Dy>& layerBackwordIterator(size_t layer_index,size_t unit_index);//backward iterator for propagation.
+    
+    bool exportNetwork(std::string filename);
 };
+
+bool FeedForward_Dy::exportNetwork(std::string filename){
+    
+    std::ofstream ofs(filename);
+    if(!ofs.is_open())return false;
+    
+    size_t layer_size = getNumberOfLayers();
+    for(size_t i=0; i<layer_size; i++){
+        ofs << layer_size << std::endl;
+        for(auto&& unit: network[i]){
+            ofs << unit.bias;
+            ofs << unit.weight.size() << std::endl;
+            for(int j=0; j<unit.weight.size(); j++)ofs << ' ' << unit.weight[j];
+            ofs << std::endl;
+        }
+    }
+    
+    return true;
+}
 
 std::vector<Unit_Dy>& FeedForward_Dy::layerForwardIterator(size_t layer_index,size_t unit_index){
 	return network[layer_index+1];
