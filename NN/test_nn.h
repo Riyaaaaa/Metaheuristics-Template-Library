@@ -10,6 +10,7 @@
 #define MTL_Development_test_nn_h
 
 #include"Boolean_Operation_Network.h"
+#include"Boolean_Operation_Network_Dynamic.h"
 #include"OCR_Network.h"
 
 void unit_test(){
@@ -23,9 +24,9 @@ void unit_test(){
     std::cout << "-------END--------" << std::endl;
 }
 
-
 void test_nn(){
-    xor_nn();
+    mtl::NNSolver<mtl::FeedForward_Dy, mtl::tanh_af> solver(0.05);
+    import_network_and_plot(solver, "xor_network_parameters");
     //xor_nn();
 }
 

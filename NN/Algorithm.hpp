@@ -117,6 +117,7 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
+            //delta[i] = (out - target[i]);
             delta[i] = ao.activateDerivative(out) * (target[i] - out);
             layer[i].bias += _trate * delta[i];
         }
@@ -154,7 +155,7 @@ template<class Tuple,class ActivationObject>
 struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
     typedef std::vector<float> output_layer_t;
     
-    const double _trate = 0.15;
+    const double _trate = 0.05;
     ActivationObject ao;
     
     std::vector<float> operator()(std::vector<Unit_Dy>& layer,const output_layer_t& target){
@@ -163,7 +164,8 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
-            delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            delta[i] = (target[i] - out);
+            //delta[i] = ao.activateDerivative(out) * (target[i] - out);
             layer[i].bias += _trate * delta[i];
         }
         

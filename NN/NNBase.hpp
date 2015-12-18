@@ -147,6 +147,7 @@ public:
     std::vector<Unit_Dy>& layerBackwordIterator(size_t layer_index,size_t unit_index);//backward iterator for propagation.
     
     bool exportNetwork(std::string filename);
+    bool importNetwork(std::string filename);
 };
 
 bool FeedForward_Dy::exportNetwork(std::string filename){
@@ -155,8 +156,9 @@ bool FeedForward_Dy::exportNetwork(std::string filename){
     if(!ofs.is_open())return false;
     
     size_t layer_size = getNumberOfLayers();
+    ofs << layer_size << std::endl;
     for(size_t i=0; i<layer_size; i++){
-        ofs << layer_size << std::endl;
+        ofs << getNumberOfUnits(i) << std::endl;
         for(auto&& unit: network[i]){
             ofs << unit.bias;
             ofs << unit.weight.size() << std::endl;
@@ -167,6 +169,39 @@ bool FeedForward_Dy::exportNetwork(std::string filename){
     
     return true;
 }
+
+bool FeedForward_Dy::importNetwork(std::string filename){
+    
+    std::ifstream ifs(filename);
+    if(!ifs.is_open())return false;
+    
+    size_t layer_size,number_of_units,next_layer_size;
+    ifs >> layer_size;
+    network.resize(layer_size);
+    
+    try{
+    
+    for(size_t i=0; i<layer_size; i++){
+        ifs >> number_of_units;
+        network[i].resize(number_of_units);
+        for(size_t j=0; j<number_of_units; j++){
+            ifs >> network[i][j].bias;
+            ifs >> next_layer_size;
+            network[i][j].weight.resize(next_layer_size);
+            for(size_t k=0; k<network[i][j].weight.size(); k++)ifs >> network[i][j].weight[k];
+        }
+    }
+        
+    }
+    
+    catch(std::exception& e){
+        std::cout << e.what() << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
 
 std::vector<Unit_Dy>& FeedForward_Dy::layerForwardIterator(size_t layer_index,size_t unit_index){
 	return network[layer_index+1];
