@@ -64,6 +64,40 @@ struct _ErrorCorrection<Tuple,ActivationObject,STATIC>{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
+            //delta[i] = ao.activateDerivative(out) * (out - target[i]);
+            delta[i] = (out - target[i]);
+            layer[i].bias -= _trate * delta[i];
+        }
+        
+        return delta;
+    }
+    
+    template<std::size_t Size1,std::size_t Size2>
+    void operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, std::array<double,Size2>&& delta){
+        for(auto& unit: input_layer){
+            for(int i=0; i<Size2; i++){
+                unit.weight[i] -= _trate * delta[i] * unit.getStatus();
+            }
+        }
+    }
+};
+
+template<class Tuple,class ActivationObject>
+struct _ErrorCorrection<Tuple,ActivationObject,DYNAMIC>{
+    typedef std::remove_reference_t<Tuple> Tuple_t;
+    typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
+    typedef ActivationObject actiavation_type;
+    
+    const double _trate = 0.15;
+    actiavation_type ao;
+    
+    template<std::size_t Size1,std::size_t Size2>
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& layer,const output_layer_t& target){
+        double out;
+        std::array<double,std::tuple_size<output_layer_t>::value> delta;
+        
+        for(std::size_t i=0; i<target.size() ; i++){
+            out = layer[i].getStatus();
             //delta[i] = ao.activateDerivative(out) * (target[i] - out);
             delta[i] = (out - target[i]);
             layer[i].bias -= _trate * delta[i];
@@ -117,8 +151,8 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
-            //delta[i] = (out - target[i]);
-            delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            //delta[i] = (ao.activate(out) - target[i]);
+            delta[i] = ao.activateDerivative(out) * (target[i] - ao.activate(out));
             layer[i].bias += _trate * delta[i];
         }
         
@@ -164,8 +198,8 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
         
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
-            delta[i] = (target[i] - out);
-            //delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            //delta[i] = (target[i] - ao.activate(out));
+            delta[i] = ao.activateDerivative(out) * (target[i] - ao.activate(out));
             layer[i].bias += _trate * delta[i];
         }
         

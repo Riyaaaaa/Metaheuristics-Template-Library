@@ -14,7 +14,7 @@
 #include"OCR_Network.h"
 
 void unit_test(){
-    mtl::NNSolver< mtl::FeedForward<1, 1>, mtl::sigmoid_af > solver(0.05);
+    mtl::NNSolver< mtl::FeedForward<1,1>, mtl::sigmoid_af > solver(0.05);
     
     std::vector< std::pair< std::array<double,1>, std::array<double,1> > > list;
     list.push_back(std::make_pair( std::array<double,1>{1}, std::array<double,1>{0} ));
@@ -25,9 +25,10 @@ void unit_test(){
 }
 
 void test_nn(){
-    mtl::NNSolver<mtl::FeedForward_Dy, mtl::tanh_af> solver(0.05);
-    import_network_and_plot(solver, "xor_network_parameters");
-    //xor_nn();
+    //import_network_and_plot("xor_network_parameters.txt");
+    xor_nn_dy();
+    
+    //unit_test();
 }
 
 #endif

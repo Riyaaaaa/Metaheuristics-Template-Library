@@ -160,7 +160,7 @@ bool FeedForward_Dy::exportNetwork(std::string filename){
     for(size_t i=0; i<layer_size; i++){
         ofs << getNumberOfUnits(i) << std::endl;
         for(auto&& unit: network[i]){
-            ofs << unit.bias;
+            ofs << unit.bias << std::endl;
             ofs << unit.weight.size() << std::endl;
             for(int j=0; j<unit.weight.size(); j++)ofs << ' ' << unit.weight[j];
             ofs << std::endl;

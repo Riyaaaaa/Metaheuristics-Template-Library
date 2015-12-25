@@ -59,7 +59,8 @@ void xor_nn_dy(){
     if(!solver.exportNetwork("xor_network_parameters.txt"))std::cout << "faild export" << std::endl;
 }
 
-void import_network_and_plot(mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af >& solver, std::string filename){
+void import_network_and_plot(std::string filename){
+    mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af > solver(0.05);
     if(solver.importNetwork(filename)){
         
         std::ofstream ofs("xor_result.csv");

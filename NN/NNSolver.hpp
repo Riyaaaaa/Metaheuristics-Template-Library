@@ -26,8 +26,8 @@ template<class Layer>
 static double statusScanning(const Layer layer, const std::array<double, std::tuple_size<Layer>::value> target){
     double RMSerror=0.0;
     for(int i=0; i<std::tuple_size<Layer>::value ; i++){
-        //RMSerror += 0.5 * std::pow(fabs(layer[i].getStatus() - target[i]),2);
-        RMSerror += -target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus());
+        RMSerror += std::pow(fabs(layer[i].getStatus() - target[i]),2);
+        //RMSerror += 0.25*(-target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus()));
 #ifdef DEBUG_MTL
         //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
 #endif
@@ -128,8 +128,8 @@ _NNSolver<NetworkStruct,ActivationObject,STATIC>::_NNSolver(double t_rate):TRAIN
 			});
 	auto& sensory = neural.template getLayer<LAYER_SIZE-1>();
 	for(auto& unit: sensory){
-		unit.bias = 0;
-		std::fill(unit.weight.begin(),unit.weight.end(),0);
+		unit.bias = 0.0;
+		std::fill(unit.weight.begin(),unit.weight.end(),0.0);
 	}
 }
 
