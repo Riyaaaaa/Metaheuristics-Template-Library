@@ -10,6 +10,8 @@
 #define MTL_Development_Algorithm_hpp
 
 #include<cmath>
+#include<amp.h>
+#include<amp_math.h>
 #include"Utility.hpp"
 #include"NNBase.hpp"
 #include"../configuration.h"
@@ -34,6 +36,11 @@ struct no_activation_af : ActivationFunc<no_activation_af>{
 struct sigmoid_af : ActivationFunc<sigmoid_af>{
     static double activate(double input){ return 1 / (1. + exp(-input));}
     static double activateDerivative(double input){ return input * (1 - input);}
+};
+
+struct sigmoid_af_gpu_accel : ActivationFunc<sigmoid_af> {
+	static float activate(float input)restrict(cpu,amp) { return 1 / (1. + concurrency::fast_math::exp(-input)); }
+	static float activateDerivative(float input)restrict(cpu,amp) { return input * (1 - input); }
 };
 
 struct tanh_af : ActivationFunc<mtl::tanh_af>{
@@ -160,7 +167,7 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
     }
     
     template<std::size_t Size1,std::size_t Size2>
-    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, std::array<double,Size2>&& delta){
+    std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, const std::array<double,Size2>& delta){
 
         double out, propagation=0;
         
@@ -234,6 +241,58 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
 /* Network does not have three or more layers */
 template<class Tuple,class ActivationObject,class Tag>
 struct _Backpropagation<Tuple,ActivationObject,Tag,false>;
+
+template<class Tuple, class ActivationObject>
+struct Backpropagation_Gpu_Accel{
+	typedef concurrency::array_view<const float> output_layer_t;
+
+	const double _trate = 0.05;
+
+	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& layer, const output_layer_t& target){
+		ActivationObject ao;
+		float out;
+		float trate = _trate;
+		std::vector<float> delta(target.get_extent()[0]);
+
+		for (std::size_t i = 0; i<target.get_extent()[0]; i++) {
+			out = layer[i].getStatus();
+			delta[i] = (target[i] - ao.activate(out));
+			//delta[i] = ao.activateDerivative(out) * (target[i] - ao.activate(out));
+			layer[i].bias += trate * delta[i];
+		}
+
+		return delta;
+	}
+
+	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& input_layer, const output_layer_t& target, const concurrency::array_view<const float>& delta){
+		ActivationObject ao;
+		float trate = _trate;
+
+		std::vector<float> new_delta(input_layer.get_extent()[0]);
+		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
+
+		//gpu acceleration
+		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+
+				for (int i = 0; i < delta.get_extent()[0]; i++) {
+					input_layer[idx].weight[i] += trate * delta[i] * input_layer[idx].getStatus();
+				}
+
+		});
+
+		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+			float out, propagation = 0;
+				for (int i = 0; i < delta.get_extent()[0]; i++) {
+					propagation += input_layer[idx].weight[i] * delta[i];
+				}
+				out = input_layer[idx].getStatus();
+				new_delta_view[idx] = ao.activateDerivative(out) * propagation;
+				input_layer[idx].bias += trate * new_delta_view[idx];
+		});
+
+		return new_delta;
+	}
+};
 
 LIB_SCOPE_END()
     
