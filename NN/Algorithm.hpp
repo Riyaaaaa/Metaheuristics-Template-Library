@@ -36,16 +36,29 @@ struct no_activation_af : ActivationFunc<no_activation_af>{
 struct sigmoid_af : ActivationFunc<sigmoid_af>{
     static double activate(double input){ return 1 / (1. + exp(-input));}
     static double activateDerivative(double input){ return input * (1 - input);}
+	static constexpr float RANGE_MIN = 0;
+	static constexpr float RANGE_MAX = 1;
 };
 
 struct sigmoid_af_gpu_accel : ActivationFunc<sigmoid_af> {
 	static float activate(float input)restrict(cpu,amp) { return 1 / (1. + concurrency::fast_math::exp(-input)); }
 	static float activateDerivative(float input)restrict(cpu,amp) { return input * (1 - input); }
+	static constexpr float RANGE_MIN = 0;
+	static constexpr float RANGE_MAX = 1;
 };
 
 struct tanh_af : ActivationFunc<mtl::tanh_af>{
     static double activate(double input){ return tanh(input);}
     static double activateDerivative(double input){ return 1 - input*input;}
+	static constexpr float RANGE_MIN = -1;
+	static constexpr float RANGE_MAX = 1;
+};
+
+struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
+	static float activate(float input)restrict(cpu, amp) { return concurrency::fast_math::tanh(input); }
+	static float activateDerivative(float input)restrict(cpu, amp) { return 1 - input*input; }
+	static constexpr float RANGE_MIN = -1;
+	static constexpr float RANGE_MAX = 1;
 };
 
 template<class Tuple,class ActivationObject,class Tag>
@@ -169,8 +182,6 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
     template<std::size_t Size1,std::size_t Size2>
     std::array<double,Size1> operator()(std::array<Unit<Size2>,Size1>& input_layer,const output_layer_t& target, const std::array<double,Size2>& delta){
 
-        double out, propagation=0;
-        
         std::array<double,Size1> new_delta;
         
         for(auto& unit: input_layer){
@@ -180,6 +191,7 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
         }
         
         for(int j=0; j<Size1; j++){
+			double out, propagation = 0;
             for(int i=0; i<Size2; i++){
                 propagation += input_layer[j].weight[i] * delta[i];
             }
@@ -206,7 +218,7 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
         for(std::size_t i=0; i<target.size() ; i++){
             out = layer[i].getStatus();
             //delta[i] = (target[i] - ao.activate(out));
-            delta[i] = ao.activateDerivative(out) * (target[i] - ao.activate(out));
+            delta[i] = ao.activateDerivative(out) * (target[i] - layer[i].output(ao.activate));
             layer[i].bias += _trate * delta[i];
         }
         
@@ -215,23 +227,28 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
 
     std::vector<float> operator()(std::vector<Unit_Dy>& input_layer,const output_layer_t& target, const std::vector<float>& delta){
         
-        double out, propagation=0;
-        
         std::vector<float> new_delta(input_layer.size());
         
-        for(auto& unit: input_layer){
+        /*for(auto& unit: input_layer){
             for(int i=0; i<delta.size(); i++){
                 unit.weight[i] += _trate * delta[i] * unit.getStatus();
             }
-        }
+        }*/
         
         for(int j=0; j<input_layer.size(); j++){
+			double out, propagation = 0;
+
+			for (int i = 0; i<delta.size(); i++) {
+				input_layer[j].weight[i] += _trate * delta[i] * input_layer[j].getStatus();
+			}
+			
             for(int i=0; i<delta.size(); i++){
                 propagation += input_layer[j].weight[i] * delta[i];
             }
             out = input_layer[j].getStatus();
             new_delta[j] = ao.activateDerivative(out) * propagation;
             input_layer[j].bias += _trate * new_delta[j];
+
         }
         
         return new_delta;
@@ -255,9 +272,9 @@ struct Backpropagation_Gpu_Accel{
 		std::vector<float> delta(target.get_extent()[0]);
 
 		for (std::size_t i = 0; i<target.get_extent()[0]; i++) {
-			out = layer[i].getStatus();
-			delta[i] = (target[i] - ao.activate(out));
-			//delta[i] = ao.activateDerivative(out) * (target[i] - ao.activate(out));
+			out = layer[i].output(ao.activate);
+			//delta[i] = (target[i] - out);
+			delta[i] = ao.activateDerivative(out) * (target[i] - out);
 			layer[i].bias += trate * delta[i];
 		}
 
@@ -274,18 +291,14 @@ struct Backpropagation_Gpu_Accel{
 		//gpu acceleration
 		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
 
-				for (int i = 0; i < delta.get_extent()[0]; i++) {
+			for (int i = 0; i < delta.get_extent()[0]; i++) {
 					input_layer[idx].weight[i] += trate * delta[i] * input_layer[idx].getStatus();
-				}
-
-		});
-
-		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+			}
 			float out, propagation = 0;
 				for (int i = 0; i < delta.get_extent()[0]; i++) {
 					propagation += input_layer[idx].weight[i] * delta[i];
 				}
-				out = input_layer[idx].getStatus();
+				out = input_layer[idx].getStatus() + input_layer[idx].bias; 
 				new_delta_view[idx] = ao.activateDerivative(out) * propagation;
 				input_layer[idx].bias += trate * new_delta_view[idx];
 		});

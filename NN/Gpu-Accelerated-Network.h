@@ -28,13 +28,13 @@ void xor_nn_amp() {
 	mtl::FeedForward_Amp network;
 	network.setStruct(network_struct);
 
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::sigmoid_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
 
 	std::vector< std::pair< std::vector<float>, std::vector<float> > > list;
-	list.push_back(std::make_pair(std::vector<float>{1, 1}, std::vector<float>{0}));
-	list.push_back(std::make_pair(std::vector<float>{0, 1}, std::vector<float>{1}));
-	list.push_back(std::make_pair(std::vector<float>{1, 0}, std::vector<float>{1}));
-	list.push_back(std::make_pair(std::vector<float>{0, 0}, std::vector<float>{0}));
+	list.push_back(std::make_pair(std::vector<float>{1, 1}, std::vector<float>{-1}));
+	list.push_back(std::make_pair(std::vector<float>{-1, 1}, std::vector<float>{1}));
+	list.push_back(std::make_pair(std::vector<float>{1, -1}, std::vector<float>{1}));
+	list.push_back(std::make_pair(std::vector<float>{-1, -1}, std::vector<float>{-1}));
 
 	solver.training<mtl::Backpropagation_Gpu_Accel>(list);
 
@@ -44,7 +44,7 @@ void xor_nn_amp() {
 	for (float x = -1.0; x <= 1.0; x += 0.02) {
 		for (float y = -1.0; y <= 1.0; y += 0.02) {
 			auto output = solver.solveAnswer({ x,y });
-			ofs << x << "," << y << "," << output[0].output([](float a)restrict(cpu,amp) { return mtl::sigmoid_af_gpu_accel::activate(a); }) << std::endl;
+			ofs << x << "," << y << "," << output[0].output(mtl::tanh_af_gpu_accel::activate) << std::endl;
 		}
 	}
 	std::cout << std::endl;

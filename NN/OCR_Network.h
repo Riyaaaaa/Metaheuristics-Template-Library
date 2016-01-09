@@ -132,9 +132,17 @@ std::vector< std::pair< std::vector<float> , std::vector<float> > > import_csv(s
 }
 
 void ocr_nn(){
-    //auto trainig_sample = import_csv("../ocr_test.csv",784,10);
-    //mtl::NNSolver< mtl::FeedForward_Dy, mtl::sigmoid_af > solver(0.05);
-    //solver.training<mtl::Backpropagation>(trainig_sample);
+    auto trainig_sample = import_csv("../ocr_test.csv",784,10);
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	network_struct[0] = 784;
+	network_struct[1] = 784;
+	network_struct[2] = 10;
+
+	mtl::FeedForward_Amp network;
+	network.setStruct(network_struct);
+
+    mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05,network);
+    solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
     
     std::cout << "-------END--------" << std::endl;
 }
