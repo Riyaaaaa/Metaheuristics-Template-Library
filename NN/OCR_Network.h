@@ -100,14 +100,14 @@ std::vector< std::pair< std::vector<float> , std::vector<float> > > import_csv(s
         
         if(buffer.empty())break;
         
-        std::fill(output.begin(),output.end(),0);
+        std::fill(output.begin(),output.end(),0.f);
         
         getline(streambuffer, token, delimiter);
         output[std::stoi(token)]=1;
         
         for(int i=0; i<InputVectorSize; i++){
             getline(streambuffer, token, delimiter);
-            input[i] = std::stoi(token);
+            input[i] = std::stoi(token) / 128.f - 1;
         }
         list.push_back(std::make_pair(input,output));
     }
@@ -131,8 +131,8 @@ std::vector< std::pair< std::vector<float> , std::vector<float> > > import_csv(s
     return list;
 }
 
-void ocr_nn(){
-    auto trainig_sample = import_csv("../ocr_test.csv",784,10);
+void ocr_nn(std::string filename){
+    auto trainig_sample = import_csv(filename,784,10);
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	network_struct[0] = 784;
 	network_struct[1] = 784;
@@ -140,11 +140,37 @@ void ocr_nn(){
 
 	mtl::FeedForward_Amp network;
 	network.setStruct(network_struct);
-
     mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05,network);
+	//solver.setNetworkStruct(network_struct);
     solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
+	solver.exportNetwork("ocr_network.txt");
+	//network.exportNetwork("ocr_network.txt");
     
     std::cout << "-------END--------" << std::endl;
+}
+
+void ocr_sample_trimmer(int scale) {
+	auto training_sample = import_csv("../../NN/training_sample/ocr_test.csv",784,10);
+	std::ofstream ofs("ocr_test_scale_" + std::to_string(scale) + ".csv");
+
+	ofs << "label";
+	for (int i = 0; i < training_sample[0].first.size(); i++) {
+		ofs << "pixel" + std::to_string(i);
+		if (i != training_sample[0].first.size() - 1)ofs << ",";
+	}
+
+	ofs << std::endl;
+
+	for (int i = 0; i < training_sample.size(); i+=scale) {
+		for (int j = 0; j < training_sample[i].second.size(); j++) {
+			float label = training_sample[i].second[j];
+			if (label == 1) { ofs << j; break;  }
+		}
+		for (int j = 0; j < training_sample[i].first.size(); j++) {
+			ofs << "," << training_sample[i].first[j];
+		}
+		ofs << std::endl;
+	}
 }
 
 #endif

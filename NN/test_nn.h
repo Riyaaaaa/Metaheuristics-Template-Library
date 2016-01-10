@@ -27,9 +27,11 @@
 
 void test_nn(){
     //import_network_and_plot("xor_network_parameters.txt");
-    xor_nn_amp();
+    //xor_nn_amp();
 	//xor_nn_dy();
     //unit_test();
+	//ocr_sample_trimmer(100);
+	ocr_nn("ocr_test_scale_100.csv");
 }
 
 #endif

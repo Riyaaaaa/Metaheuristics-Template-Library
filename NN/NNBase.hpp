@@ -54,7 +54,7 @@ double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
 class Unit_Dy{
 public:
     double bias=0.5;
-    std::vector<float> weight;
+    std::vector<double> weight;
     
     template<class F>
     double output(F&& f);
@@ -95,8 +95,9 @@ double Unit_Dy_Litteral::output(F&& f) {
 class Unit_Dy_Amp{
 	friend FeedForward_Amp;
 public:
+	static constexpr int W_SIZE = 784;
 	float bias = 0.5;
-	float weight[4];
+	float weight[W_SIZE];
 
 	template<class F>
 	float output(F&& f);
@@ -288,8 +289,8 @@ bool FeedForward_Amp::exportNetwork(std::string filename) {
 		ofs << units[i].size() << std::endl;
 		for (auto&& unit : units[i]) {
 			ofs << unit.bias << std::endl;
-			ofs << 4 << std::endl;
-			for (int j = 0; j<4; j++)ofs << ' ' << unit.weight[j];
+			ofs << Unit_Dy_Amp::W_SIZE << std::endl;
+			for (int j = 0; j< Unit_Dy_Amp::W_SIZE; j++)ofs << ' ' << unit.weight[j];
 			ofs << std::endl;
 		}
 	}
@@ -315,7 +316,7 @@ bool FeedForward_Amp::importNetwork(std::string filename) {
 				ifs >> units[i][j].bias;
 				ifs >> next_layer_size;
 				//network[i][j].weight.resize(next_layer_size);
-				for (size_t k = 0; k<4; k++)ifs >> units[i][j].weight[k];
+				for (size_t k = 0; k<Unit_Dy_Amp::W_SIZE; k++)ifs >> units[i][j].weight[k];
 			}
 		}
 

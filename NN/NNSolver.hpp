@@ -302,7 +302,7 @@ _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::_NNSolver(double t_rate,std::
         for(typename NetworkStruct::size_t j=0; j<neural.getNumberOfUnits(i); j++){
             neural.network[i][j].bias = 0;
             if( i==neural.getNumberOfLayers()-1 ) {
-                std::fill(neural.network[i][j].weight.begin(),neural.network[i][j].weight.end(),0);
+                std::fill(neural.network[i][j].weight.begin(),neural.network[i][j].weight.end(),0.0f);
             }
             else std::fill(neural.network[i][j].weight.begin(),neural.network[i][j].weight.end(),distribution(mt));
         }
@@ -432,14 +432,14 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		template<class NetworkStruct, class ActivationObject>
 		class _NNSolver<NetworkStruct, ActivationObject, AMP> {
 		public:
-			explicit _NNSolver(double t_rate, std::vector<typename NetworkStruct::size_t> number_of_uints);
-			explicit _NNSolver(double t_rate, FeedForward_Amp& network);
+			explicit _NNSolver(float t_rate, std::vector<typename NetworkStruct::size_t> number_of_uints);
+			explicit _NNSolver(float t_rate, FeedForward_Amp& network);
 
 			NetworkStruct neural;
 			typedef typename concurrency::array_view<Unit_Dy_Amp> output_layer;
 			typedef typename std::vector<Unit_Dy> input_layer;
 
-			const double TRAINIG_RATE;
+			const float TRAINIG_RATE;
 
 			void setNumberOfUnitsOfLayers(std::vector<int> num_units);
 			void setNumberOfUnitsByLayerIndex(int num_nutis);
@@ -470,10 +470,10 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		};
 
 		template<class NetworkStruct, class ActivationObject>
-		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(double t_rate, std::vector<typename NetworkStruct::size_t> number_of_units) :TRAINIG_RATE(t_rate) {
+		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(float t_rate, std::vector<typename NetworkStruct::size_t> number_of_units) :TRAINIG_RATE(t_rate) {
 			std::random_device rnd;
 			std::mt19937 mt(rnd());
-			std::uniform_real_distribution<double> distribution(-1, 1);
+			std::uniform_real_distribution<float> distribution(-1, 1);
 
 			setNetworkStruct(number_of_units);
 
@@ -489,10 +489,10 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		}
 
 		template<class NetworkStruct, class ActivationObject>
-		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(double t_rate, FeedForward_Amp& network) :TRAINIG_RATE(t_rate) {
+		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(float t_rate, FeedForward_Amp& network) :TRAINIG_RATE(t_rate) {
 			std::random_device rnd;
 			std::mt19937 mt(rnd());
-			std::uniform_real_distribution<double> distribution(0, 1);
+			std::uniform_real_distribution<float> distribution(ActivationObject::RANGE_MIN, ActivationObject::RANGE_MAX);
 			for (int i = 0; i < network.units.size(); i++) {
 				neural.network.push_back( concurrency::array_view<Unit_Dy_Amp>(network.units[i].size(), reinterpret_cast<Unit_Dy_Amp*>(&network.units[i][0])));
 			}
@@ -501,12 +501,12 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 				for (typename NetworkStruct::size_t j = 0; j < neural.getNumberOfUnits(i); j++) {
 					neural.network[i][j].bias = 0;
 					if (i == neural.getNumberOfLayers() - 1) {
-						for (int k = 0; k < 4; k++) {
+						for (int k = 0; k < Unit_Dy_Amp::W_SIZE; k++) {
 							neural.network[i][j].weight[k] = 0;
 						}
 					}
 					else {
-						for (int k = 0; k < 4; k++) {
+						for (int k = 0; k < Unit_Dy_Amp::W_SIZE; k++) {
 							neural.network[i][j].weight[k] = distribution(mt);
 						}
 					}
@@ -606,17 +606,30 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 					concurrency::array_view<Unit_Dy_Amp>& back_layer = neural.network[i - 1];
 					concurrency::extent<1> ex;
 					if (i != neural.getNumberOfLayers() - 1)ex = layer.get_extent();
-					else ex[0] = 1;
+					else ex[0] = 10;
 					//gpu acceleration
-					parallel_for_each(layer.get_extent(),[=](concurrency::index<1> idx)restrict(amp){
+
+					/*parallel_for_each(ex,[=](concurrency::index<1> idx)restrict(amp){
 						layer[idx].setStatus(ao.activate(sigma(back_layer, idx[0]) + layer[idx].bias));
-					});
+					});*/
+
+					for (int j = 0; j<ex[0]; j++) {
+						layer[j].setStatus(ao.activate(sigma(back_layer, j) + layer[j].bias));
+						if (isnan(layer[j].getStatus())) {
+							std::cout << "Calc Error" << std::endl;
+						}
+					}
+
+					layer.synchronize();
 				}
 			}
-			static double sigma(const concurrency::array_view<Unit_Dy_Amp>& input_layer, int unitid) restrict(cpu,amp){
-				double sum = 0;
+			static float sigma(const concurrency::array_view<Unit_Dy_Amp>& input_layer, int unitid) /*restrict(cpu,amp)*/{
+				float sum = 0;
 				for (int i = 0; i < input_layer.get_extent()[0]; i++) {
 					sum += input_layer[i].getStatus() * input_layer[i].weight[unitid] + input_layer[i].bias;
+					if (isnan(sum)) {
+						std::cout << "Calc Error" << std::endl;
+					}
 				}
 				return sum;
 			}
