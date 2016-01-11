@@ -24,11 +24,11 @@ LIB_SCOPE_BEGIN()
 
 
 
-template<class Layer, class Target_t>
-static double statusScanning(const Layer layer, const Target_t target){
+template<class Layer, class Target_t, class AO>
+static double statusScanning(const Layer layer, const Target_t target, AO&& ao){
     double RMSerror=0.0;
     for(int i=0; i<target.size() ; i++){
-        RMSerror += 0.5 * std::pow(fabs(layer[i].getStatus() - target[i]),2);
+        RMSerror += 0.5 * std::pow(fabs(layer[i].output(ao) - target[i]),2);
         //RMSerror += -target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus());
 #ifdef DEBUG_MTL
         //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
@@ -345,7 +345,7 @@ auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::training(std::vector<
 		std::shuffle(training_list.begin(), training_list.end(),mt);
 		for(auto& training_target: training_list){
 			regulateWeight(training_target.first, training_target.second, training_object);
-			RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+			RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second, ActivationObject::activate);
 		}
 #ifdef DEBUG_MTL
 		std::cout << i << ',' << RMSerror << std::endl;
@@ -359,7 +359,7 @@ auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::training(std::vector<
 	neural = best_network;
 	for(auto& training_target: training_list){
 		regulateWeight(training_target.first, training_target.second, training_object);
-		RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+		RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second, ActivationObject::activate);
 	}
 	return neural.network.back();
 }
@@ -542,15 +542,15 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		std::mt19937 mt(rd());
 
 		for (int i = 0; i<TRAINIG_LIMITS; i++) {
-			std::shuffle(training_list.begin(), training_list.end(),mt);
-			for (auto& training_target : training_list) {
-				regulateWeight(training_target.first, training_target.second, training_object);
-				RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+			//std::shuffle(training_list.begin(), training_list.end(),mt);
+			//for (auto& training_target : training_list) {
+			for (int j = 0; j < training_list.size(); j++) {
+				regulateWeight(training_list[j].first, training_list[j].second, training_object);
+				RMSerror += statusScanning(solveAnswer(training_list[j].first),training_list[j].second, ActivationObject::activate);
 			}
 #ifdef DEBUG_MTL
 			std::cout << i << ',' << RMSerror << std::endl;
-#endif
-			if (best > RMSerror) { best = RMSerror; best_network = neural; }
+#endif			if (best > RMSerror) { best = RMSerror; best_network = neural; }
 			RMSerror = 0.0;
 		}
 #ifdef DEBUG_MTL
@@ -559,7 +559,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		neural = best_network;
 		for (auto& training_target : training_list) {
 			regulateWeight(training_target.first, training_target.second, training_object);
-			RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+			RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second, ActivationObject::activate);
 		}
 		}
 
@@ -609,27 +609,27 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 					else ex[0] = 10;
 					//gpu acceleration
 
-					/*parallel_for_each(ex,[=](concurrency::index<1> idx)restrict(amp){
-						layer[idx].setStatus(ao.activate(sigma(back_layer, idx[0]) + layer[idx].bias));
-					});*/
+					parallel_for_each(ex,[=](concurrency::index<1> idx)restrict(amp){
+						layer[idx].setStatus(sigma(back_layer, idx[0]));
+					});
 
-					for (int j = 0; j<ex[0]; j++) {
-						layer[j].setStatus(ao.activate(sigma(back_layer, j) + layer[j].bias));
-						if (isnan(layer[j].getStatus())) {
+					/*for (int idx = 0; idx<ex[0]; idx++) {
+						layer[idx].setStatus(sigma(back_layer, idx));
+						if (isnan(layer[idx].getStatus())) {
 							std::cout << "Calc Error" << std::endl;
 						}
 					}
 
 					layer.synchronize();
+					if (isnan(layer[0].getStatus())) {
+						std::cout << "Calc Error" << std::endl;
+					}*/
 				}
 			}
-			static float sigma(const concurrency::array_view<Unit_Dy_Amp>& input_layer, int unitid) /*restrict(cpu,amp)*/{
+			static float sigma(const concurrency::array_view<const Unit_Dy_Amp>& input_layer, int unitid) restrict(cpu,amp){
 				float sum = 0;
 				for (int i = 0; i < input_layer.get_extent()[0]; i++) {
-					sum += input_layer[i].getStatus() * input_layer[i].weight[unitid] + input_layer[i].bias;
-					if (isnan(sum)) {
-						std::cout << "Calc Error" << std::endl;
-					}
+					sum += ActivationObject::activate_amp(input_layer[i].getStatus() + input_layer[i].bias) * input_layer[i].weight[unitid];
 				}
 				return sum;
 			}

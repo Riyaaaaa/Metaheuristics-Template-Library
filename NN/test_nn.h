@@ -31,7 +31,7 @@ void test_nn(){
 	//xor_nn_dy();
     //unit_test();
 	//ocr_sample_trimmer(100);
-	ocr_nn("ocr_test_scale_100.csv");
+	ocr_nn("ocr_test_scale_100.csv","ocr_network_testcase01.txt");
 }
 
 #endif

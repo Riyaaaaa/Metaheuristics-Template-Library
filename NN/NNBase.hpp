@@ -57,7 +57,7 @@ public:
     std::vector<double> weight;
     
     template<class F>
-    double output(F&& f);
+    double output(F&& f)const;
     
     template<std::size_t _iSize>
     double input(const std::array<Unit_Dy , _iSize>& surface);
@@ -69,7 +69,7 @@ private:
 };
 
 template<class F>
-double Unit_Dy::output(F&& f){
+double Unit_Dy::output(F&& f)const{
     return f(_status+bias);
 }
 
@@ -100,7 +100,10 @@ public:
 	float weight[W_SIZE];
 
 	template<class F>
-	float output(F&& f);
+	float output(F&& f)const restrict(cpu);
+
+	template<class F>
+	float output_amp()const restrict(amp);
 
 	void    setStatus(float _s) restrict(cpu,amp){ _status = _s; }
 	float  getStatus()const restrict(cpu,amp) { return _status; }
@@ -109,7 +112,13 @@ private:
 };
 
 template<class F>
-float Unit_Dy_Amp::output(F&& f){
+float Unit_Dy_Amp::output(F&& f)const restrict(cpu){
+	return f(_status + bias);
+}
+
+template<class F>
+float Unit_Dy_Amp::output_amp()const restrict(amp){
+	F f;
 	return f(_status + bias);
 }
 

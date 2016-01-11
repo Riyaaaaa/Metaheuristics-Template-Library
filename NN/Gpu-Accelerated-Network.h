@@ -44,7 +44,7 @@ void xor_nn_amp() {
 	for (float x = -1.0; x <= 1.0; x += 0.02) {
 		for (float y = -1.0; y <= 1.0; y += 0.02) {
 			auto output = solver.solveAnswer({ x,y });
-			ofs << x << "," << y << "," << output[0].output(mtl::tanh_af_gpu_accel::activate) << std::endl;
+			ofs << x << "," << y << "," << output[0].output(mtl::tanh_af::activate) << std::endl;
 		}
 	}
 	std::cout << std::endl;

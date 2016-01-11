@@ -49,14 +49,17 @@ struct sigmoid_af_gpu_accel : ActivationFunc<sigmoid_af> {
 
 struct tanh_af : ActivationFunc<mtl::tanh_af>{
     static double activate(double input){ return tanh(input);}
-    static double activateDerivative(double input){ return 1 - input*input;}
+    static double activateDerivative(double input){ return 1 - std::pow(tanh(input),2);}
 	static constexpr float RANGE_MIN = -1;
 	static constexpr float RANGE_MAX = 1;
 };
 
 struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
-	static float activate(float input)restrict(cpu, amp) { return concurrency::fast_math::tanh(input); }
-	static float activateDerivative(float input)restrict(cpu, amp) { return 1 - input*input; }
+	static float activate_amp(float input)restrict(amp) { return concurrency::fast_math::fabs(input>50) ? concurrency::precise_math::copysignf(1, input) : concurrency::fast_math::tanh(input);
+	}
+	static float activateDerivative_amp(float input)restrict(amp) { return 1 - activate_amp(input) * activate_amp(input); }
+	static float activate(float input) restrict(cpu){ return tanhf(input); }
+	static float activateDerivative(float input) restrict(cpu) { return 1 - std::pow(tanhf(input), 2); }
 	static constexpr float RANGE_MIN = -1;
 	static constexpr float RANGE_MAX = 1;
 };
@@ -277,44 +280,52 @@ struct Backpropagation_Gpu_Accel{
 			//delta[i] = ao.activateDerivative(out) * (target[i] - out);
 			layer[i].bias += trate * delta[i];
 		}
+
+		layer.synchronize();
+
+		
 		return delta;
 	}
 
-	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& input_layer, const output_layer_t& target, const concurrency::array_view<const float>& delta){
+	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& input_layer, const output_layer_t& target, const concurrency::array_view<const float>& delta) {
 		ActivationObject ao;
 		float trate = _trate;
 
 		std::vector<float> new_delta(input_layer.get_extent()[0]);
 		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
+		float no[1];
+		concurrency::array_view<float> nan_out(1,no);
 
 		//gpu acceleration
-		/*parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
-
+		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
-					input_layer[idx].weight[i] += trate * delta[i] * input_layer[idx].getStatus();
+				input_layer[idx].weight[i] += trate * delta[i] * ao.activate_amp(out);
 			}
-			float out, propagation = 0;
-				for (int i = 0; i < delta.get_extent()[0]; i++) {
-					propagation += input_layer[idx].weight[i] * delta[i];
-				}
-				out = input_layer[idx].getStatus() + input_layer[idx].bias; 
-				new_delta_view[idx] = ao.activateDerivative(out) * propagation;
-				input_layer[idx].bias += trate * new_delta_view[idx];
-		});*/
-
-		for (int idx = 0; idx < delta.get_extent()[0];idx++) {
-			for (int i = 0; i < delta.get_extent()[0]; i++) {
-				input_layer[idx].weight[i] += trate * delta[i] * input_layer[idx].getStatus();
-			}
-			float out, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
 				propagation += input_layer[idx].weight[i] * delta[i];
 			}
-			out = input_layer[idx].getStatus() + input_layer[idx].bias;
+			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
+			input_layer[idx].bias += trate * new_delta_view[idx];
+		});
+
+		/*for (int idx = 0; idx < delta.get_extent()[0];idx++) {
+			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
+			for (int i = 0; i < delta.get_extent()[0]; i++) {
+				input_layer[idx].weight[i] += trate * delta[i] * ao.activate(out);
+			}
+			for (int i = 0; i < delta.get_extent()[0]; i++) {
+				propagation += input_layer[idx].weight[i] * delta[i];
+			}
 			new_delta_view[idx] = ao.activateDerivative(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		}
-
+		}*/
+		/*for (int i = 0; i < delta.get_extent()[0]; i++) {
+		if (isnan(new_delta[0])) {
+			std::cout << "Calc Error" << std::endl;
+		}*/
+	//}
+		new_delta_view.synchronize();
 		return new_delta;
 	}
 };
