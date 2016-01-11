@@ -55,7 +55,7 @@ struct tanh_af : ActivationFunc<mtl::tanh_af>{
 };
 
 struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
-	static float activate_amp(float input)restrict(amp) { return concurrency::fast_math::fabs(input>50) ? concurrency::precise_math::copysignf(1, input) : concurrency::fast_math::tanh(input);
+	static float activate_amp(float input)restrict(amp) { return concurrency::fast_math::fabs(input)>50 ? concurrency::precise_math::copysignf(1, input) : concurrency::fast_math::tanh(input);
 	}
 	static float activateDerivative_amp(float input)restrict(amp) { return 1 - activate_amp(input) * activate_amp(input); }
 	static float activate(float input) restrict(cpu){ return tanhf(input); }
@@ -63,6 +63,51 @@ struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
 	static constexpr float RANGE_MIN = -1;
 	static constexpr float RANGE_MAX = 1;
 };
+
+template<class Layer, typename ActivationObject>
+struct no_principle {
+	const Layer& _layer;
+	no_principle(const Layer& layer) :_layer(layer) {
+	}
+
+	auto operator[](std::size_t i) const{
+		return _layer[i].output(ActivationObject::activate);
+	}
+};
+
+template<class Layer,typename ActivationObject>
+struct elite_principle {
+	const Layer& _layer;
+	std::size_t idx;
+	elite_principle(const Layer& layer) :_layer(layer){
+		idx = std::max_element(layer.begin(), layer.end(), [](auto& lhs, auto& rhs) { return (lhs.getStatus() + lhs.bias) < (rhs.getStatus() + rhs.bias); }) - layer.begin();
+	}
+
+	auto operator[](std::size_t i)const {
+		return i == idx ? return _layer[i].output(ActivationObject::activate) : ActivationObject::RANGE_MIN;
+	}
+};
+
+template<typename ActivationObject>
+struct elite_principle<concurrency::array_view<Unit_Dy_Amp>,ActivationObject> {
+	const concurrency::array_view<Unit_Dy_Amp>& _layer;
+	int idx;
+	elite_principle(const concurrency::array_view<Unit_Dy_Amp>& layer):_layer(layer) {
+		float max = layer[0].getStatus() + layer[0].bias;
+		idx = 0;
+		for (int i = 1; i < layer.get_extent()[0]; i++){
+			if (max < layer[i].getStatus() + layer[i].bias) {
+				idx = i;
+				max = layer[i].getStatus() + layer[i].bias;
+			}
+		}
+	}
+
+	auto operator[](int i) const{
+		return i == idx ? _layer[i].output(ActivationObject::activate) : ActivationObject::RANGE_MIN;
+	}
+};
+
 
 template<class Tuple,class ActivationObject,class Tag>
 struct _ErrorCorrection;
@@ -266,7 +311,7 @@ template<class Tuple, class ActivationObject>
 struct Backpropagation_Gpu_Accel{
 	typedef concurrency::array_view<const float> output_layer_t;
 
-	const float _trate = 0.05f;
+	const float _trate = 10.f;
 
 	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& layer, const output_layer_t& target){
 		ActivationObject ao;
@@ -282,7 +327,11 @@ struct Backpropagation_Gpu_Accel{
 		}
 
 		layer.synchronize();
-
+		for (int i = 0; i < delta.size(); i++) {
+			if (isnan(delta[i])) {
+				std::cout << "Calc Error" << std::endl;
+			}
+		}
 		
 		return delta;
 	}
@@ -292,9 +341,9 @@ struct Backpropagation_Gpu_Accel{
 		float trate = _trate;
 
 		std::vector<float> new_delta(input_layer.get_extent()[0]);
+		std::vector<float> no(input_layer.get_extent()[0]);
 		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
-		float no[1];
-		concurrency::array_view<float> nan_out(1,no);
+		concurrency::array_view<float> nan_out(input_layer.get_extent()[0],no);
 
 		//gpu acceleration
 		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
@@ -306,6 +355,9 @@ struct Backpropagation_Gpu_Accel{
 				propagation += input_layer[idx].weight[i] * delta[i];
 			}
 			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
+			/*if (concurrency::fast_math::isnan(new_delta_view[idx])) {
+				nan_out[idx] = out;
+			}*/
 			input_layer[idx].bias += trate * new_delta_view[idx];
 		});
 
@@ -320,12 +372,14 @@ struct Backpropagation_Gpu_Accel{
 			new_delta_view[idx] = ao.activateDerivative(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
 		}*/
-		/*for (int i = 0; i < delta.get_extent()[0]; i++) {
-		if (isnan(new_delta[0])) {
-			std::cout << "Calc Error" << std::endl;
-		}*/
-	//}
 		new_delta_view.synchronize();
+		input_layer.synchronize();
+		nan_out.synchronize();
+		for (int i = 0; i < new_delta.size(); i++) {
+			if (isnan(new_delta[i])) {
+				std::cout << "Calc Error" << std::endl;
+			}
+		}
 		return new_delta;
 	}
 };

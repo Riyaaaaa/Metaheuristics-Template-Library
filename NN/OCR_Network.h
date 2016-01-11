@@ -100,7 +100,7 @@ std::vector< std::pair< std::vector<float> , std::vector<float> > > import_csv(s
         
         if(buffer.empty())break;
         
-        std::fill(output.begin(),output.end(),0.f);
+        std::fill(output.begin(),output.end(),-1.f);
         
         getline(streambuffer, token, delimiter);
         output[std::stoi(token)]=1;
