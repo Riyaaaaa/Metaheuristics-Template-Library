@@ -343,11 +343,14 @@ class FeedForward_Amp_View {
 public:
 	//Structure of network determined at the runtime
 	typedef std::vector< std::vector<float> > structure;
+	typedef FeedForward_Amp origin_data;
 	typedef AMP tag;
 	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
 	typedef unsigned int size_t;
 
 	std::vector < concurrency::array_view<Unit_Dy_Amp> > network;
+	void copy_to(origin_data&);
+	void copy_from(origin_data&);
 
 	size_t getNumberOfLayers(){ return network.size(); }
 	size_t getNumberOfUnits(size_t layer_index) { return network[layer_index].get_extent()[0]; }
@@ -362,6 +365,30 @@ public:
 	bool importNetwork(std::string filename);
 private:
 };
+
+void FeedForward_Amp_View::copy_to(origin_data& origin) {
+	origin.units.resize( network.size() );
+	for (int i = 0; i < network.size(); i++) {
+		origin.units[i].resize(network[i].get_extent()[0]);
+		auto& network_view = network[i];
+		concurrency::array_view<Unit_Dy_Amp> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp*>(&origin.units[i][0]));
+		parallel_for_each(network[i].get_extent(),[=](concurrency::index<1> idx)restrict(amp){
+			units_view[idx] = network_view[idx];
+		});
+		units_view.synchronize();
+	}
+}
+
+void FeedForward_Amp_View::copy_from(origin_data& origin) {
+	for (int i = 0; i < network.size(); i++) {
+		auto& network_view = network[i];
+		concurrency::array_view<Unit_Dy_Amp> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp*>(&origin.units[i][0]));
+		parallel_for_each(network[i].get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+			network_view[idx] = units_view[idx[0]];
+		});
+		network[i].synchronize();
+	}
+}
 
 Concurrency::array_view<Unit_Dy_Amp>& FeedForward_Amp_View::layerForwardIterator(size_t layer_index, size_t unit_index) {
 	return network[layer_index + 1];

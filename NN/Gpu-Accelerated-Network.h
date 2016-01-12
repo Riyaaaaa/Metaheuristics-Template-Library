@@ -1,6 +1,7 @@
 #pragma once
 
 #include"NNSolver.hpp"
+#include"modules.h"
 #include<fstream>
 #include<vector>
 #include<utility>
@@ -50,4 +51,21 @@ void xor_nn_amp() {
 	std::cout << std::endl;
 
 	if (!solver.exportNetwork("xor_network_parameters.txt"))std::cout << "faild export" << std::endl;
+}
+
+void xor_nn_amp_fileio(std::string csv_filename) {
+	auto trainig_sample = import_csv(csv_filename, 2, 1);
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	network_struct[0] = 2;
+	network_struct[1] = 4;
+	network_struct[2] = 1;
+
+	mtl::FeedForward_Amp network;
+	network.setStruct(network_struct);
+	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+
+	solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
+	solver.exportNetwork("xor_network.txt");
+
+	std::cout << "-------END--------" << std::endl;
 }

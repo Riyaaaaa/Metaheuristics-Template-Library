@@ -311,7 +311,7 @@ template<class Tuple, class ActivationObject>
 struct Backpropagation_Gpu_Accel{
 	typedef concurrency::array_view<const float> output_layer_t;
 
-	const float _trate = 10.f;
+	const float _trate = 0.01f;
 
 	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& layer, const output_layer_t& target){
 		ActivationObject ao;
@@ -327,11 +327,11 @@ struct Backpropagation_Gpu_Accel{
 		}
 
 		layer.synchronize();
-		for (int i = 0; i < delta.size(); i++) {
+		/*for (int i = 0; i < delta.size(); i++) {
 			if (isnan(delta[i])) {
 				std::cout << "Calc Error" << std::endl;
 			}
-		}
+		}*/
 		
 		return delta;
 	}
@@ -341,9 +341,7 @@ struct Backpropagation_Gpu_Accel{
 		float trate = _trate;
 
 		std::vector<float> new_delta(input_layer.get_extent()[0]);
-		std::vector<float> no(input_layer.get_extent()[0]);
 		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
-		concurrency::array_view<float> nan_out(input_layer.get_extent()[0],no);
 
 		//gpu acceleration
 		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
@@ -355,9 +353,6 @@ struct Backpropagation_Gpu_Accel{
 				propagation += input_layer[idx].weight[i] * delta[i];
 			}
 			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
-			/*if (concurrency::fast_math::isnan(new_delta_view[idx])) {
-				nan_out[idx] = out;
-			}*/
 			input_layer[idx].bias += trate * new_delta_view[idx];
 		});
 
@@ -374,12 +369,6 @@ struct Backpropagation_Gpu_Accel{
 		}*/
 		new_delta_view.synchronize();
 		input_layer.synchronize();
-		nan_out.synchronize();
-		for (int i = 0; i < new_delta.size(); i++) {
-			if (isnan(new_delta[i])) {
-				std::cout << "Calc Error" << std::endl;
-			}
-		}
 		return new_delta;
 	}
 };

@@ -28,7 +28,7 @@ template<class Layer, class Target_t>
 static double statusScanning(const Layer& layer, const Target_t& target){
     double RMSerror=0.0;
     for(int i=0; i<target.size() ; i++){
-        RMSerror += 0.5 * std::pow(fabs(layer[i] - target[i]),2);
+		RMSerror += 0.5 * std::pow(fabs(layer[i] - target[i]),2);
         //RMSerror += -target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus());
 #ifdef DEBUG_MTL
         //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
@@ -532,33 +532,40 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 			std::vector<float>
 			>
 		>& training_list){
-			const std::size_t TRAINIG_LIMITS = 300;
+			const std::size_t TRAINIG_LIMITS = 3;
 
 		_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object;
 		double RMSerror = 0.0, best = 1e6;
-		NetworkStruct best_network;
+		typename NetworkStruct::origin_data best_network;
+		neural.copy_to(best_network);
+
 		std::random_device rd;
 		std::mt19937 mt(rd());
 
 		for (int i = 0; i<TRAINIG_LIMITS; i++) {
-			//std::shuffle(training_list.begin(), training_list.end(),mt);
+			std::shuffle(training_list.begin(), training_list.end(),mt);
 			//for (auto& training_target : training_list) {
 			for (int j = 0; j < training_list.size(); j++) {
 				regulateWeight(training_list[j].first, training_list[j].second, training_object);
-				RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_Dy_Amp>,ActivationObject>(solveAnswer(training_list[j].first)),training_list[j].second);
+			}
+			for (int j = 0; j < training_list.size(); j++) {
+				RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_Dy_Amp>, ActivationObject>(solveAnswer(training_list[j].first)), training_list[j].second);
 			}
 #ifdef DEBUG_MTL
 			std::cout << i << ',' << RMSerror << std::endl;
-#endif			if (best > RMSerror) { best = RMSerror; best_network = neural; }
+#endif		
+			if (best > RMSerror) { 
+				best = RMSerror; 
+				neural.copy_to(best_network); 
+			}
 			RMSerror = 0.0;
+		
 		}
-#ifdef DEBUG_MTL
-		//std::cout << "best value = " << best << std::endl;
-#endif
-		neural = best_network;
+		neural.copy_from(best_network);
 		for (auto& training_target : training_list) {
 			RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_Dy_Amp>, ActivationObject>(solveAnswer(training_target.first)),training_target.second);
 		}
+		std::cout << "training result: sum of train sample error = " <<  RMSerror << std::endl;
 		}
 
 			template<class NetworkStruct, class ActivationObject>
