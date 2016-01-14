@@ -48,7 +48,6 @@ void test_nn(){
 	auto samples = import_csv_from_image(filenames);
 
 	export_csv("micachan.csv",samples);
-
 	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");
 }
 

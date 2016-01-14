@@ -123,7 +123,7 @@ std::vector< std::vector<float> > import_csv_for_test(std::string filename, cons
 
 std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_from_image(std::vector<std::string> filenames) {
 	std::vector<std::pair<std::vector<float>,std::vector<float>>> data;
-	cv::Mat all_image(28 * (filenames.size() / 11 + 1), 28 * 10, CV_8UC1),view;
+	cv::Mat all_image(28 * (filenames.size() / 11 + 1), 28 * 10, CV_8UC1),view,charactor_img(28,28,CV_8UC1);
 
 	for (int idx = 0; idx < filenames.size(); idx++) {
 		cv::Mat chara = cv::imread(filenames[idx], cv::IMREAD_GRAYSCALE);
@@ -132,18 +132,18 @@ std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_fr
 		int num;
 		cv::imshow("charactor",view);
 		std::cout << "enter answer " + filenames[idx] << std::endl;
+		//cv::waitKey(-1);
 		std::cin >> num;
 
 		std::vector<float> input, target(10);
 		std::fill(target.begin(), target.end(), -1);
 		target[num] = 1;
 		for (int i = 0; i < chara.rows; i++) {
-			
 			for (int j = 0; j < chara.cols; j++) {
-				input.push_back(chara.at<int>(j,i) / 128.f - 1);
+				input.push_back(chara.at<unsigned char>(i,j) / 128.f - 1);
 			}
-			
 		}
+
 		data.push_back( std::make_pair(input,target) );
 		chara.copyTo(all_image(cv::Rect(idx % 10 * 28, idx / 10 * 28 , 28, 28)));
 	}
