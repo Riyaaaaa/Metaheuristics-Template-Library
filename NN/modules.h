@@ -67,3 +67,5 @@ std::vector< std::pair< std::array<double, InputVectorSize>, std::array<double, 
 std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_from_density(std::string filename, const std::size_t InputVectorSize, const std::size_t OutputVectorSize);
 std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv(std::string filename, const std::size_t InputVectorSize, const std::size_t OutputVectorSize);
 std::vector< std::vector<float> > import_csv_for_test(std::string filename, const std::size_t InputVectorSize);
+std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_from_image(std::vector<std::string>);
+bool export_csv(std::string,std::vector< std::pair< std::vector<float>, std::vector<float> > >);

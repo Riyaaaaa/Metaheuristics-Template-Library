@@ -311,7 +311,7 @@ template<class Tuple, class ActivationObject>
 struct Backpropagation_Gpu_Accel{
 	typedef concurrency::array_view<const float> output_layer_t;
 
-	const float _trate = 0.01f;
+	const float _trate = 0.001f;
 
 	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& layer, const output_layer_t& target){
 		ActivationObject ao;
@@ -326,7 +326,6 @@ struct Backpropagation_Gpu_Accel{
 			layer[i].bias += trate * delta[i];
 		}
 
-		layer.synchronize();
 		/*for (int i = 0; i < delta.size(); i++) {
 			if (isnan(delta[i])) {
 				std::cout << "Calc Error" << std::endl;
@@ -368,7 +367,6 @@ struct Backpropagation_Gpu_Accel{
 			input_layer[idx].bias += trate * new_delta_view[idx];
 		}*/
 		new_delta_view.synchronize();
-		input_layer.synchronize();
 		return new_delta;
 	}
 };

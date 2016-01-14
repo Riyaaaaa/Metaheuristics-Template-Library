@@ -33,10 +33,23 @@ void test_nn(){
 	//xor_nn_amp_fileio("../../NN/training_sample/xor_train.csv");
     //unit_test();
 	//ocr_train_trimmer(101);
+	//ocr_nn("../../NN/training_sample/ocr_train.csv");
 	//ocr_nn("ocr_test_scale_101.csv","ocr_network_testcase01.txt");
 	//ocr_test_trimmer(100);
-	ocr_nn("ocr_train_scale_101.csv");
-	//ocr_tester("ocr_test_scale_100.csv","ocr_network.txt");
+	//ocr_nn("ocr_train_scale_101.csv");
+	//ocr_calc_error("ocr_train_scale_101.csv", "ocr_network.txt");
+	//ocr_tester("ocr_test_scale_100.csv","ocr_network_0114_1110.txt");
+
+	std::vector<std::string> filenames;
+	for (int i = 0; i < 10; i++) {
+		filenames.push_back("../../NN/training_sample_image/micha_" + std::to_string(i) + ".png");
+	}
+
+	auto samples = import_csv_from_image(filenames);
+
+	export_csv("micachan.csv",samples);
+
+	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");
 }
 
 #endif

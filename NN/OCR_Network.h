@@ -19,7 +19,7 @@
 #include<utility>
 
 void ocr_nn(std::string filename){
-    auto trainig_sample = import_csv(filename,784,10);
+    auto trainig_sample = import_csv_from_density(filename,784,10);
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	network_struct[0] = 784;
 	network_struct[1] = 784;
@@ -30,14 +30,14 @@ void ocr_nn(std::string filename){
     mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05,network);
 	//solver.setNetworkStruct(network_struct);
     solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
-	solver.exportNetwork("ocr_network.txt");
+	network.exportNetwork("ocr_network.txt");
 	//network.exportNetwork("ocr_network.txt");
     
     std::cout << "-------END--------" << std::endl;
 }
 
 void ocr_nn(std::string csv_filename,std::string network_filename) {
-	auto trainig_sample = import_csv(csv_filename, 784, 10);
+	auto trainig_sample = import_csv_from_density(csv_filename, 784, 10);
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	network_struct[0] = 784;
 	network_struct[1] = 784;
@@ -46,11 +46,10 @@ void ocr_nn(std::string csv_filename,std::string network_filename) {
 	mtl::FeedForward_Amp network;
 	network.setStruct(network_struct);
 	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
-	//network.importNetwork(network_filename);
-	//solver.setNetworkStruct(network_struct);
+	network.importNetwork(network_filename);
+
 	solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
-	solver.exportNetwork("ocr_network.txt");
-	//network.exportNetwork("ocr_network.txt");
+	network.exportNetwork("ocr_network.txt");
 
 	std::cout << "-------END--------" << std::endl;
 }
@@ -77,6 +76,24 @@ void ocr_train_trimmer(int scale) {
 		}
 		ofs << std::endl;
 	}
+}
+
+void ocr_calc_error(std::string csv_filename,std::string network_filename) {
+	auto trainig_sample = import_csv(csv_filename, 784, 10);
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	network_struct[0] = 784;
+	network_struct[1] = 784;
+	network_struct[2] = 10;
+
+	mtl::FeedForward_Amp network;
+	network.setStruct(network_struct);
+
+	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	network.importNetwork(network_filename);
+
+	float error = solver.calcError(trainig_sample);
+	std::cout << "RMSerror = " << error << std::endl;
+
 }
 
 void ocr_test_trimmer(int scale) {
