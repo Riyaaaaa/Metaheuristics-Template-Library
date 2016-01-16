@@ -28,7 +28,7 @@
 void test_nn(){
     //import_network_and_plot("xor_network_parameters.txt");
 
-    //xor_nn_amp();
+    xor_nn_amp();
 	//xor_nn_dy();
 	//xor_nn_amp_fileio("../../NN/training_sample/xor_train.csv");
     //unit_test();
@@ -40,7 +40,7 @@ void test_nn(){
 	//ocr_calc_error("ocr_train_scale_101.csv", "ocr_network.txt");
 	//ocr_tester("ocr_test_scale_100.csv","ocr_network_0114_1110.txt");
 
-	std::vector<std::string> filenames;
+	/*std::vector<std::string> filenames;
 	for (int i = 0; i < 10; i++) {
 		filenames.push_back("../../NN/training_sample_image/micha_" + std::to_string(i) + ".png");
 	}
@@ -48,7 +48,7 @@ void test_nn(){
 	auto samples = import_csv_from_image(filenames);
 
 	export_csv("micachan.csv",samples);
-	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");
+	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");*/
 }
 
 #endif

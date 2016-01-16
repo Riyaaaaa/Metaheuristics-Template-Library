@@ -25,11 +25,11 @@ void ocr_nn(std::string filename){
 	network_struct[1] = 784;
 	network_struct[2] = 10;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<784> network;
 	network.setStruct(network_struct);
-    mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05,network);
+    mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	//solver.setNetworkStruct(network_struct);
-    solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
+    solver.training<mtl::Backpropagation_Gpu_Accel>(0.001,trainig_sample);
 	network.exportNetwork("ocr_network.txt");
 	//network.exportNetwork("ocr_network.txt");
     
@@ -43,12 +43,12 @@ void ocr_nn(std::string csv_filename,std::string network_filename) {
 	network_struct[1] = 784;
 	network_struct[2] = 10;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<784> network;
 	network.setStruct(network_struct);
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	network.importNetwork(network_filename);
 
-	solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
+	solver.training<mtl::Backpropagation_Gpu_Accel>(0.001,trainig_sample);
 	network.exportNetwork("ocr_network.txt");
 
 	std::cout << "-------END--------" << std::endl;
@@ -85,10 +85,10 @@ void ocr_calc_error(std::string csv_filename,std::string network_filename) {
 	network_struct[1] = 784;
 	network_struct[2] = 10;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<784> network;
 	network.setStruct(network_struct);
 
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	network.importNetwork(network_filename);
 
 	float error = solver.calcError(trainig_sample);
@@ -128,10 +128,10 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 	network_struct[1] = 784;
 	network_struct[2] = 10;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<784> network;
 	network.setStruct(network_struct);
 
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	network.importNetwork(network_filename);
 
 	for (auto&& test : ocr_test) {
@@ -143,7 +143,7 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 		cv::resize(charactor_img, view, cv::Size(rows * 5, cols * 5));
 		cv::imshow("charactor", view);
 
-		std::cout << mtl::elite_principle<concurrency::array_view<mtl::Unit_Dy_Amp>, mtl::tanh_af>(solver.solveAnswer(test)).idx << std::endl;
+		std::cout << mtl::elite_principle<concurrency::array_view<mtl::Unit_Dy_Amp<784>>, mtl::tanh_af>(solver.solveAnswer(test)).idx << std::endl;
 
 		cv::waitKey(-1);
 		cv::destroyWindow("charactor");

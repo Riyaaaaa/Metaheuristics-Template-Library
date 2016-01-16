@@ -26,10 +26,10 @@ void xor_nn_amp() {
 	network_struct[1] = 4;
 	network_struct[2] = 1;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<4> network;
 	network.setStruct(network_struct);
 
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<4>, mtl::tanh_af_gpu_accel > solver(network);
 
 	std::vector< std::pair< std::vector<float>, std::vector<float> > > list;
 	list.push_back(std::make_pair(std::vector<float>{1, 1}, std::vector<float>{-1}));
@@ -37,7 +37,7 @@ void xor_nn_amp() {
 	list.push_back(std::make_pair(std::vector<float>{1, -1}, std::vector<float>{1}));
 	list.push_back(std::make_pair(std::vector<float>{-1, -1}, std::vector<float>{-1}));
 
-	solver.training<mtl::Backpropagation_Gpu_Accel>(list);
+	solver.training<mtl::Backpropagation_Gpu_Accel>(0.015,list);
 
 	std::cout << "-------END--------" << std::endl;
 	std::ofstream ofs("xor_result.csv");
@@ -60,11 +60,11 @@ void xor_nn_amp_fileio(std::string csv_filename) {
 	network_struct[1] = 4;
 	network_struct[2] = 1;
 
-	mtl::FeedForward_Amp network;
+	mtl::FeedForward_Amp<4> network;
 	network.setStruct(network_struct);
-	mtl::NNSolver< mtl::FeedForward_Amp_View, mtl::tanh_af_gpu_accel > solver(0.05, network);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<4>, mtl::tanh_af_gpu_accel > solver(network);
 
-	solver.training<mtl::Backpropagation_Gpu_Accel>(trainig_sample);
+	solver.training<mtl::Backpropagation_Gpu_Accel>(0.015,trainig_sample);
 	solver.exportNetwork("xor_network.txt");
 
 	std::cout << "-------END--------" << std::endl;

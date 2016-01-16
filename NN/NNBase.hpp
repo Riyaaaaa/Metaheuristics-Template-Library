@@ -18,6 +18,7 @@
 
 LIB_SCOPE_BEGIN()
 
+template<std::size_t WEIGHT_SIZE>
 class FeedForward_Amp;
 
 template<class T>
@@ -92,10 +93,11 @@ double Unit_Dy_Litteral::output(F&& f) {
 	return f(_status + bias);
 }
 
+template<std::size_t WEIGHT_SIZE>
 class Unit_Dy_Amp{
-	friend FeedForward_Amp;
+	friend FeedForward_Amp<WEIGHT_SIZE>;
 public:
-	static constexpr int W_SIZE = 784;
+	static constexpr int W_SIZE = WEIGHT_SIZE;
 	float bias = 0.5;
 	float weight[W_SIZE];
 
@@ -111,13 +113,15 @@ private:
 	float _status;
 };
 
+template<std::size_t WEIGHT_SIZE>
 template<class F>
-float Unit_Dy_Amp::output(F&& f)const restrict(cpu){
+float Unit_Dy_Amp<WEIGHT_SIZE>::output(F&& f)const restrict(cpu){
 	return f(_status + bias);
 }
 
+template<std::size_t WEIGHT_SIZE>
 template<class F>
-float Unit_Dy_Amp::output_amp()const restrict(amp){
+float Unit_Dy_Amp<WEIGHT_SIZE>::output_amp()const restrict(amp){
 	F f;
 	return f(_status + bias);
 }
@@ -265,9 +269,10 @@ std::vector<Unit_Dy>& FeedForward_Dy::layerBackwordIterator(size_t layer_index,s
 	return network[layer_index-1];
 }
 
+template<std::size_t W_SIZE>
 class FeedForward_Amp {
 public:
-	std::vector< std::vector<Unit_Dy_Amp> > units;
+	std::vector< std::vector<Unit_Dy_Amp<W_SIZE>> > units;
 
 	void setStruct(std::vector<unsigned int> number_of_units);
 
@@ -275,7 +280,8 @@ public:
 	bool importNetwork(std::string filename);
 };
 
-void FeedForward_Amp::setStruct(std::vector<unsigned int> number_of_units){
+template<std::size_t W_SIZE>
+void FeedForward_Amp<W_SIZE>::setStruct(std::vector<unsigned int> number_of_units){
 
 	units.resize(number_of_units.size());
 
@@ -287,7 +293,8 @@ void FeedForward_Amp::setStruct(std::vector<unsigned int> number_of_units){
 
 }
 
-bool FeedForward_Amp::exportNetwork(std::string filename) {
+template<std::size_t W_SIZE>
+bool FeedForward_Amp<W_SIZE>::exportNetwork(std::string filename) {
 
 	std::ofstream ofs(filename);
 	if (!ofs.is_open())return false;
@@ -298,8 +305,8 @@ bool FeedForward_Amp::exportNetwork(std::string filename) {
 		ofs << units[i].size() << std::endl;
 		for (auto&& unit : units[i]) {
 			ofs << unit.bias << std::endl;
-			ofs << Unit_Dy_Amp::W_SIZE << std::endl;
-			for (int j = 0; j< Unit_Dy_Amp::W_SIZE; j++)ofs << ' ' << unit.weight[j];
+			ofs << W_SIZE << std::endl;
+			for (int j = 0; j< W_SIZE; j++)ofs << ' ' << unit.weight[j];
 			ofs << std::endl;
 		}
 	}
@@ -307,7 +314,8 @@ bool FeedForward_Amp::exportNetwork(std::string filename) {
 	return true;
 }
 
-bool FeedForward_Amp::importNetwork(std::string filename) {
+template<std::size_t W_SIZE>
+bool FeedForward_Amp<W_SIZE>::importNetwork(std::string filename) {
 
 	std::ifstream ifs(filename);
 	if (!ifs.is_open())return false;
@@ -325,7 +333,7 @@ bool FeedForward_Amp::importNetwork(std::string filename) {
 				ifs >> units[i][j].bias;
 				ifs >> next_layer_size;
 				//network[i][j].weight.resize(next_layer_size);
-				for (size_t k = 0; k<Unit_Dy_Amp::W_SIZE; k++)ifs >> units[i][j].weight[k];
+				for (size_t k = 0; k<W_SIZE; k++)ifs >> units[i][j].weight[k];
 			}
 		}
 
@@ -339,39 +347,42 @@ bool FeedForward_Amp::importNetwork(std::string filename) {
 	return true;
 }
 
+template<std::size_t W_SIZE>
 class FeedForward_Amp_View {
 public:
 	//Structure of network determined at the runtime
 	typedef std::vector< std::vector<float> > structure;
-	typedef FeedForward_Amp origin_data;
+	typedef FeedForward_Amp<W_SIZE> origin_data;
+	typedef Unit_Dy_Amp<W_SIZE> Unit_t;
 	typedef AMP tag;
 	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
 	typedef unsigned int size_t;
 
-	std::vector < concurrency::array_view<Unit_Dy_Amp> > network;
+	std::vector < concurrency::array_view<Unit_Dy_Amp<W_SIZE>> > network;
 	void copy_to(origin_data&);
 	void copy_from(origin_data&);
 
 	size_t getNumberOfLayers(){ return network.size(); }
 	size_t getNumberOfUnits(size_t layer_index) { return network[layer_index].get_extent()[0]; }
 
-	Concurrency::array_view<Unit_Dy_Amp>& getLayer(size_t layer_index){ return network[layer_index]; };
-	Unit_Dy_Amp getUnit(size_t layer_index, size_t unit_index){ return network[layer_index][unit_index]; };
+	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& getLayer(size_t layer_index){ return network[layer_index]; };
+	Unit_Dy_Amp<W_SIZE> getUnit(size_t layer_index, size_t unit_index){ return network[layer_index][unit_index]; };
 
-	Concurrency::array_view<Unit_Dy_Amp>& layerForwardIterator(size_t layer_index, size_t unit_index); //forward iterator for propagation.
-	Concurrency::array_view<Unit_Dy_Amp>& layerBackwordIterator(size_t layer_index, size_t unit_index);//backward iterator for propagation.
+	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& layerForwardIterator(size_t layer_index, size_t unit_index); //forward iterator for propagation.
+	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& layerBackwordIterator(size_t layer_index, size_t unit_index);//backward iterator for propagation.
 
 	bool exportNetwork(std::string filename);
 	bool importNetwork(std::string filename);
 private:
 };
 
-void FeedForward_Amp_View::copy_to(origin_data& origin) {
+template<std::size_t W_SIZE>
+void FeedForward_Amp_View<W_SIZE>::copy_to(origin_data& origin) {
 	origin.units.resize( network.size() );
 	for (int i = 0; i < network.size(); i++) {
 		origin.units[i].resize(network[i].get_extent()[0]);
 		auto& network_view = network[i];
-		concurrency::array_view<Unit_Dy_Amp> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp*>(&origin.units[i][0]));
+		concurrency::array_view<Unit_Dy_Amp<W_SIZE>> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp<W_SIZE>*>(&origin.units[i][0]));
 		parallel_for_each(network[i].get_extent(),[=](concurrency::index<1> idx)restrict(amp){
 			units_view[idx] = network_view[idx];
 		});
@@ -379,10 +390,11 @@ void FeedForward_Amp_View::copy_to(origin_data& origin) {
 	}
 }
 
-void FeedForward_Amp_View::copy_from(origin_data& origin) {
+template<std::size_t W_SIZE>
+void FeedForward_Amp_View<W_SIZE>::copy_from(origin_data& origin) {
 	for (int i = 0; i < network.size(); i++) {
 		auto& network_view = network[i];
-		concurrency::array_view<Unit_Dy_Amp> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp*>(&origin.units[i][0]));
+		concurrency::array_view<Unit_Dy_Amp<W_SIZE>> units_view(origin.units[i].size(), reinterpret_cast<Unit_Dy_Amp<W_SIZE>*>(&origin.units[i][0]));
 		parallel_for_each(network[i].get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
 			network_view[idx] = units_view[idx[0]];
 		});
@@ -390,18 +402,23 @@ void FeedForward_Amp_View::copy_from(origin_data& origin) {
 	}
 }
 
-Concurrency::array_view<Unit_Dy_Amp>& FeedForward_Amp_View::layerForwardIterator(size_t layer_index, size_t unit_index) {
+template<std::size_t W_SIZE>
+Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& FeedForward_Amp_View<W_SIZE>::layerForwardIterator(size_t layer_index, size_t unit_index) {
 	return network[layer_index + 1];
 }
 
-Concurrency::array_view<Unit_Dy_Amp>& FeedForward_Amp_View::layerBackwordIterator(size_t layer_index, size_t unit_index) {
+template<std::size_t W_SIZE>
+Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& FeedForward_Amp_View<W_SIZE>::layerBackwordIterator(size_t layer_index, size_t unit_index) {
 	return network[layer_index - 1];
 }
 
-bool FeedForward_Amp_View::exportNetwork(std::string filename) {
+template<std::size_t W_SIZE>
+bool FeedForward_Amp_View<W_SIZE>::exportNetwork(std::string filename) {
 	return true;
 }
-bool FeedForward_Amp_View::importNetwork(std::string filename) {
+
+template<std::size_t W_SIZE>
+bool FeedForward_Amp_View<W_SIZE>::importNetwork(std::string filename) {
 	return true;
 }
 LIB_SCOPE_END()

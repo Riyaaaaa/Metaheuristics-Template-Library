@@ -75,11 +75,17 @@ struct no_principle {
 	}
 };
 
+template<class Layer, typename ActivationObject, bool isStdContainer>
+struct _elite_principle;
+
 template<class Layer,typename ActivationObject>
-struct elite_principle {
+using elite_principle = _elite_principle<Layer, ActivationObject, is_container<Layer>::value>;
+
+template<class Layer,typename ActivationObject>
+struct _elite_principle<Layer,ActivationObject,true>{
 	const Layer& _layer;
 	std::size_t idx;
-	elite_principle(const Layer& layer) :_layer(layer){
+	_elite_principle(const Layer& layer) :_layer(layer){
 		idx = std::max_element(layer.begin(), layer.end(), [](auto& lhs, auto& rhs) { return (lhs.getStatus() + lhs.bias) < (rhs.getStatus() + rhs.bias); }) - layer.begin();
 	}
 
@@ -88,11 +94,11 @@ struct elite_principle {
 	}
 };
 
-template<typename ActivationObject>
-struct elite_principle<concurrency::array_view<Unit_Dy_Amp>,ActivationObject> {
-	const concurrency::array_view<Unit_Dy_Amp>& _layer;
+template<class Layer,typename ActivationObject>
+struct _elite_principle<Layer,ActivationObject,false>{
+	const Layer& _layer;
 	int idx;
-	elite_principle(const concurrency::array_view<Unit_Dy_Amp>& layer):_layer(layer) {
+	_elite_principle(const Layer& layer):_layer(layer) {
 		float max = layer[0].getStatus() + layer[0].bias;
 		idx = 0;
 		for (int i = 1; i < layer.get_extent()[0]; i++){
@@ -307,13 +313,14 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
 template<class Tuple,class ActivationObject,class Tag>
 struct _Backpropagation<Tuple,ActivationObject,Tag,false>;
 
-template<class Tuple, class ActivationObject>
+template<class Net_t, class ActivationObject>
 struct Backpropagation_Gpu_Accel{
 	typedef concurrency::array_view<const float> output_layer_t;
+	Backpropagation_Gpu_Accel(const float t_rate):_trate(t_rate) {}
 
-	const float _trate = 0.001f;
+	const float _trate;
 
-	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& layer, const output_layer_t& target){
+	std::vector<float> operator()(concurrency::array_view<typename Net_t::Unit_t>& layer, const output_layer_t& target){
 		ActivationObject ao;
 		float out;
 		float trate = _trate;
@@ -335,7 +342,7 @@ struct Backpropagation_Gpu_Accel{
 		return delta;
 	}
 
-	std::vector<float> operator()(concurrency::array_view<Unit_Dy_Amp>& input_layer, const output_layer_t& target, const concurrency::array_view<const float>& delta) {
+	std::vector<float> operator()(concurrency::array_view<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const concurrency::array_view<const float>& delta) {
 		ActivationObject ao;
 		float trate = _trate;
 
