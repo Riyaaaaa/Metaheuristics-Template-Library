@@ -332,12 +332,6 @@ struct Backpropagation_Gpu_Accel{
 			//delta[i] = ao.activateDerivative(out) * (target[i] - out);
 			layer[i].bias += trate * delta[i];
 		}
-
-		/*for (int i = 0; i < delta.size(); i++) {
-			if (isnan(delta[i])) {
-				std::cout << "Calc Error" << std::endl;
-			}
-		}*/
 		
 		return delta;
 	}
@@ -361,19 +355,54 @@ struct Backpropagation_Gpu_Accel{
 			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
 		});
+		new_delta_view.synchronize();
+		return new_delta;
+	}
+};
 
-		/*for (int idx = 0; idx < delta.get_extent()[0];idx++) {
+template<class Net_t, class ActivationObject>
+struct Backpropagation_Convolution {
+	typedef std::vector<float> output_layer_t;
+	Backpropagation_Convolution(const float t_rate) :_trate(t_rate) {}
+
+	const float _trate;
+
+	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& layer, const output_layer_t& target) {
+		ActivationObject ao;
+		float out;
+		std::vector<float> delta(target.get_extent()[0]);
+
+		for (std::size_t i = 0; i<target.get_extent()[0]; i++) {
+			out = layer[i].output(ao.activate);
+			delta[i] = (target[i] - out);
+			//delta[i] = ao.activateDerivative(out) * (target[i] - out);
+			layer[i].bias += _trate * delta[i];
+		}
+
+		return delta;
+	}
+
+	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< Map >& delta) {
+		ActivationObject ao;
+		float trate = _trate;
+
+		std::vector<float> new_delta(input_layer.get_extent()[0]);
+
+		//gpu acceleration
+		for (int idx = 0; idx < input_layer.size(); idx++) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
-			for (int i = 0; i < delta.get_extent()[0]; i++) {
-				input_layer[idx].weight[i] += trate * delta[i] * ao.activate(out);
+			for (int i = 0; i < delta.size(); i++) {
+				for (int j = 0; j < delta[i].size(); j++) {
+					out = input_layer[idx].getStatus(j, i) + input_layer[idx].getBias(j, i);
+					input_layer[idx].w_mat_view += trate * delta[i][j] * ao.activate(out);
+				}
 			}
-			for (int i = 0; i < delta.get_extent()[0]; i++) {
+			for (int i = 0; i < delta.size(); i++) {
 				propagation += input_layer[idx].weight[i] * delta[i];
 			}
-			new_delta_view[idx] = ao.activateDerivative(out) * propagation;
+			new_delta[idx] = ao.activateDerivative_amp(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		}*/
-		new_delta_view.synchronize();
+		}
 		return new_delta;
 	}
 };

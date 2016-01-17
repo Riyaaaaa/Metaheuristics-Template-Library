@@ -513,7 +513,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 
 			inputting(neural.network.front(),sensory);
 
-		calcSurface()(neural);
+		NetworkStruct::Calc_Func<ActivationObject>()(neural);
 
 		return neural.network.back();
 		}
@@ -521,7 +521,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 			template<class NetworkStruct, class ActivationObject>
 		template<template<class, class>class _TRAINING_OBJECT>
 		void _NNSolver<NetworkStruct, ActivationObject, AMP>::training(float t_rate,training_list_t& training_list){
-			const std::size_t TRAINIG_LIMITS = 3000;
+			const std::size_t TRAINIG_LIMITS = 100;
 
 		_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object(t_rate);
 		double RMSerror = 0.0, best = 1e6;
@@ -573,7 +573,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 			const std::vector<float>& target,
 			_TRAINING_OBJECT& _training_algorithm) {
 			inputting(neural.network.front(), input);
-			calcSurface()(neural);
+			NetworkStruct::Calc_Func<ActivationObject>()(neural);
 
 			concurrency::array_view<const float> target_view(static_cast<int>(target.size()), reinterpret_cast<const float*>(&target[0]));
 			auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers() - 1], target_view);
@@ -603,46 +603,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 
 		}
 
-		template<class NetworkStruct, class ActivationObject>
-		struct _NNSolver<NetworkStruct, ActivationObject, AMP>::calcSurface {
-			void operator()(NetworkStruct& neural) {
-				ActivationObject ao;
-				for (int i = 1; i<neural.getNumberOfLayers(); i++) {
-					concurrency::array_view<Unit_t>& layer = neural.network[i];
-					concurrency::array_view<Unit_t>& back_layer = neural.network[i - 1];
-					concurrency::extent<1> ex;
-					if (i != neural.getNumberOfLayers() - 1)ex = layer.get_extent();
-					else ex[0] = 10;
-					//gpu acceleration
-
-					parallel_for_each(ex,[=](concurrency::index<1> idx)restrict(amp){
-						layer[idx].setStatus(sigma(back_layer, idx[0]));
-					});
-
-					/*for (int idx = 0; idx<ex[0]; idx++) {
-						layer[idx].setStatus(sigma(back_layer, idx));
-						if (isnan(layer[idx].getStatus())) {
-							std::cout << "Calc Error" << std::endl;
-						}
-					}
-
-					layer.synchronize();
-					if (isnan(layer[0].getStatus())) {
-						std::cout << "Calc Error" << std::endl;
-					}*/
-				}
-			}
-			static float sigma(const concurrency::array_view<const Unit_t>& input_layer, int unitid)restrict(amp) {
-				float sum = 0;
-				for (int i = 0; i < input_layer.get_extent()[0]; i++) {
-					sum += ActivationObject::activate_amp(input_layer[i].getStatus() + input_layer[i].bias) * input_layer[i].weight[unitid];
-					/*if (isnan(sum)) {
-						std::cout << "Calc Error" << std::endl;
-					}*/
-				}
-				return sum;
-			}
-		};
+		
 
 		template<class NetworkStruct, class ActivationObject>
 		bool _NNSolver<NetworkStruct, ActivationObject, AMP>::exportNetwork(std::string filename) {

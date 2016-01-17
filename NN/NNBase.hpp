@@ -14,12 +14,19 @@
 #include <utility>
 #include <fstream>
 #include "Utility.hpp"
+#include "../Structure.h"
 #include "../configuration.h"
 
 LIB_SCOPE_BEGIN()
 
 template<std::size_t WEIGHT_SIZE>
 class FeedForward_Amp;
+
+template<class NetworkStruct,class ActivationObject>
+struct calcConvolution;
+
+template<class NetworkStruct,class ActivationObject>
+struct calcSurface;
 
 template<class T>
 struct ActivationFunc{
@@ -107,7 +114,7 @@ public:
 	template<class F>
 	float output_amp()const restrict(amp);
 
-	void    setStatus(float _s) restrict(cpu,amp){ _status = _s; }
+	void   setStatus(float _s) restrict(cpu,amp){ _status = _s; }
 	float  getStatus()const restrict(cpu,amp) { return _status; }
 private:
 	float _status;
@@ -124,6 +131,39 @@ template<class F>
 float Unit_Dy_Amp<WEIGHT_SIZE>::output_amp()const restrict(amp){
 	F f;
 	return f(_status + bias);
+}
+
+class Map_Amp {
+public:
+	float bias;
+	void   setStatus(float x, float y,float _s) restrict(cpu, amp) { map_view[y][x] = _s; }
+	float  getStatus(float x, float y)const restrict(cpu, amp) {
+		using c_i = concurrency::index<2>;
+		concurrency::index<2> idx;
+		return map_view[c_i(y-1,x-1)] + map_view[c_i(y - 1,x)] + map_view[c_i(y - 1,x+1)] + map_view[c_i(y,x - 1)] + map_view[c_i(y,x)] + map_view[c_i(y,x+1)] + map_view[c_i(y + 1,x+1)] + map_view[c_i(y + 1,x)] + map_view[c_i(y + 1,x+1)];
+	}
+
+	template<class F>
+	float output(F&& f)const restrict(cpu);
+
+	void setSizeOfMap(Size size);
+	concurrency::array_view<float, 2>& getMap() { return map_view; }
+	concurrency::array_view< float, 2 > map_view;
+	concurrency::array_view< float, 2 > bias_view;
+	concurrency::array_view< float, 2 > w_mat_view;
+private:
+	std::vector< float > map;
+	std::vector< float > bias;
+};
+
+void Map_Amp::setSizeOfMap(Size size) {
+	map.resize(size.width * size.height);
+	map_view = concurrency::array_view<float, 2>(size.height, size.width, reinterpret_cast<float*>(&map[0]));
+}
+
+template<class F>
+float Map_Amp::output(F&& f)const restrict(cpu) {
+	return std::accumulate(map.begin(), map.end(), 0.0f);
 }
 
 /* Feed forward perceptron class */
@@ -358,6 +398,9 @@ public:
 	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
 	typedef unsigned int size_t;
 
+	template<class ActivationObject>
+	using Calc_Func = calcSurface<FeedForward_Amp_View, ActivationObject>;
+
 	std::vector < concurrency::array_view<Unit_Dy_Amp<W_SIZE>> > network;
 	void copy_to(origin_data&);
 	void copy_from(origin_data&);
@@ -421,6 +464,104 @@ template<std::size_t W_SIZE>
 bool FeedForward_Amp_View<W_SIZE>::importNetwork(std::string filename) {
 	return true;
 }
+
+template<std::size_t Filter>
+class FeedForward_Convolution{
+public:
+	//Structure of network determined at the runtime
+	typedef std::vector< std::vector<float> > structure;
+	typedef FeedForward_Convolution<Filter> origin_data;
+	typedef Map_Amp Unit_t;
+	typedef AMP tag;
+	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
+	typedef unsigned int size_t;
+
+	template<class ActivationObject>
+	using Calc_Func = calcConvolution<FeedForward_Convolution, ActivationObject>;
+
+	static constexpr size_t FilterSize = Filter;
+
+	std::vector< std::vector< Map_Amp >  > network;
+	std::vector< std::vector< Map > > w_mat;
+	std::vector< Size > sizes;
+
+	void copy_to(origin_data&);
+	void copy_from(origin_data&);
+
+	void setSizeOfMap(size_t layer_index, size_t map_index, Size size) { network[layer_index][unit_index].setSizeOfMap(size); };
+
+	size_t getNumberOfLayers() { return network.size(); }
+	size_t getNumberOfUnits(size_t layer_index) { return network[layer_index].size(); }
+	Size getSizeOfMap(size_t layer_index) { return sizes[layer_index]; }
+
+	std::vector<Map_Amp>& getLayer(size_t layer_index) { return network[layer_index]; };
+	Map_Amp getUnit(size_t layer_index, size_t unit_index) { return network[layer_index][unit_index]; };
+
+	std::vector<Map_Amp>& layerForwardIterator(size_t layer_index, size_t unit_index); //forward iterator for propagation.
+	std::vector<Map_Amp>& layerBackwordIterator(size_t layer_index, size_t unit_index);//backward iterator for propagation.
+
+	bool exportNetwork(std::string filename);
+	bool importNetwork(std::string filename);
+private:
+};
+
+template<class NetworkStruct,class ActivationObject>
+struct calcConvolution {
+	void operator()(NetworkStruct& neural) {
+		ActivationObject ao;
+		for (int i = 1; i<neural.getNumberOfLayers(); i++) {
+				std::vector< NetworkStruct::Unit_t >& layer = neural.network[i][j];
+				std::vector< NetworkStruct::Unit_t >& back_layer = neural.network[i - 1][j];
+				for (int j = 0; j < neural.getNumberOfUnits; j++) {
+					//gpu acceleration
+					const Size size = neural.getSizeOfMap(i);
+					for (int k = 0; k < size.height; k++) {
+						for (int k = 0; l < size.width; l++) {
+							layer[k][l].setStatus(sigma(back_layer, idx[0]));
+						}
+					}
+				}
+		}
+	}
+	static float sigma(const std::vector< typename NetworkStruct::Unit_t > & input_layer, int windowid)restrict(amp) {
+		float sum = 0;
+		const size_t f_size = NetworkStruct::FilterSize;
+		for (int i = 0; i < input_layer.size(); i++) {
+			concurrency< float, 2 >& map = input_layer[i].map;
+			concurrency::get_extent<2> ex = { map.get_extent()[0] - f_size / 2 * 2, map.get_extent[1] - f_size / 2 * 2 };
+			parallel_for_each(ex, [=](concurrency::index<2> idx) {
+				sum += ActivationObject::activate_amp(input_layer[i].getStatus(idx[1],idx[0]) + input_layer[i].bias) * input_layer[i].weight[unitid];
+			});
+		}
+		return sum;
+	}
+};
+
+template<class NetworkStruct, class ActivationObject>
+struct calcSurface {
+	using Unit_t = typename NetworkStruct::Unit_t;
+	void operator()(NetworkStruct& neural) {
+		ActivationObject ao;
+		for (int i = 1; i<neural.getNumberOfLayers(); i++) {
+			concurrency::array_view<Unit_t>& layer = neural.network[i];
+			concurrency::array_view<Unit_t>& back_layer = neural.network[i - 1];
+			concurrency::extent<1> ex = layer.get_extent();
+			//gpu acceleration
+			parallel_for_each(ex, [=](concurrency::index<1> idx)restrict(amp) {
+				layer[idx].setStatus(sigma(back_layer, idx[0]));
+			});
+		}
+	}
+	static float sigma(const concurrency::array_view<const typename NetworkStruct::Unit_t>& input_layer, int unitid)restrict(amp) {
+		float sum = 0;
+		for (int i = 0; i < input_layer.get_extent()[0]; i++) {
+			sum += ActivationObject::activate_amp(input_layer[i].getStatus() + input_layer[i].bias) * input_layer[i].weight[unitid];
+		}
+		return sum;
+	}
+};
+
+
 LIB_SCOPE_END()
 
 namespace std{

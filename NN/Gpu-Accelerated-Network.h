@@ -37,7 +37,7 @@ void xor_nn_amp() {
 	list.push_back(std::make_pair(std::vector<float>{1, -1}, std::vector<float>{1}));
 	list.push_back(std::make_pair(std::vector<float>{-1, -1}, std::vector<float>{-1}));
 
-	solver.training<mtl::Backpropagation_Gpu_Accel>(0.015,list);
+	solver.training<mtl::Backpropagation_Gpu_Accel>(0.15,list);
 
 	std::cout << "-------END--------" << std::endl;
 	std::ofstream ofs("xor_result.csv");
