@@ -134,17 +134,20 @@ float Unit_Dy_Amp<WEIGHT_SIZE>::output_amp()const restrict(amp){
 }
 
 class Map_Amp {
-public:
-	float bias;
-	void   setStatus(float x, float y,float _s) restrict(cpu, amp) { map_view[y][x] = _s; }
-	float  getStatus(float x, float y)const restrict(cpu, amp) {
+public:　　　　
+	void   setStatus(float x, float y,float _s){ map_view[y][x] = _s; }
+	/*float  getStatus(float x, float y)const restrict(cpu, amp) {
 		using c_i = concurrency::index<2>;
 		concurrency::index<2> idx;
 		return map_view[c_i(y-1,x-1)] + map_view[c_i(y - 1,x)] + map_view[c_i(y - 1,x+1)] + map_view[c_i(y,x - 1)] + map_view[c_i(y,x)] + map_view[c_i(y,x+1)] + map_view[c_i(y + 1,x+1)] + map_view[c_i(y + 1,x)] + map_view[c_i(y + 1,x+1)];
+	}*/
+	float getStatus(float x,float y)const{
+		return map_view[y][x];
 	}
 
+
 	template<class F>
-	float output(F&& f)const restrict(cpu);
+	float output(F&& f)const;
 
 	void setSizeOfMap(Size size);
 	concurrency::array_view<float, 2>& getMap() { return map_view; }
@@ -162,7 +165,7 @@ void Map_Amp::setSizeOfMap(Size size) {
 }
 
 template<class F>
-float Map_Amp::output(F&& f)const restrict(cpu) {
+float Map_Amp::output(F&& f)const{
 	return std::accumulate(map.begin(), map.end(), 0.0f);
 }
 

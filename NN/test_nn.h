@@ -49,6 +49,12 @@ void test_nn(){
 
 	export_csv("micachan.csv",samples);
 	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");*/
+
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	network_struct[0] = 784;
+	network_struct[1] = 784;
+	network_struct[2] = 10;
+	mtl::NNSolver< mtl::FeedForward_Convolution<5>, mtl::tanh_af_gpu_accel > solver(network_struct);
 }
 
 #endif

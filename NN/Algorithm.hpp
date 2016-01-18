@@ -370,9 +370,9 @@ struct Backpropagation_Convolution {
 	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& layer, const output_layer_t& target) {
 		ActivationObject ao;
 		float out;
-		std::vector<float> delta(target.get_extent()[0]);
+		std::vector<float> delta(target.size());
 
-		for (std::size_t i = 0; i<target.get_extent()[0]; i++) {
+		for (std::size_t i = 0; i<target.size(); i++) {
 			out = layer[i].output(ao.activate);
 			delta[i] = (target[i] - out);
 			//delta[i] = ao.activateDerivative(out) * (target[i] - out);
@@ -386,22 +386,24 @@ struct Backpropagation_Convolution {
 		ActivationObject ao;
 		float trate = _trate;
 
-		std::vector<float> new_delta(input_layer.get_extent()[0]);
+		std::vector<float> new_delta(input_layer.size());
 
 		//gpu acceleration
 		for (int idx = 0; idx < input_layer.size(); idx++) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.size(); i++) {
 				for (int j = 0; j < delta[i].size(); j++) {
-					out = input_layer[idx].getStatus(j, i) + input_layer[idx].getBias(j, i);
-					input_layer[idx].w_mat_view += trate * delta[i][j] * ao.activate(out);
+					for (int k = 0; k < Net_t::FilterSize) {
+						for (int l = 0; l < Net_t::FilterSize; l++) {
+							out = input_layer[idx].getStatus(j+l, i+k) + input_layer[idx].getBias(j+l, i+k);
+							input_layer[idx].w_mat_view[k][l] += trate * delta[i][j] * ao.activate(out);
+							propagation += input_layer[idx].w_mat_view[i] * delta[i][j] * ao.activateDerivative(out);
+						}
+					}	
 				}
 			}
-			for (int i = 0; i < delta.size(); i++) {
-				propagation += input_layer[idx].weight[i] * delta[i];
-			}
-			new_delta[idx] = ao.activateDerivative_amp(out) * propagation;
-			input_layer[idx].bias += trate * new_delta_view[idx];
+			new_delta[idx] = propagation;
+			input_layer[idx].bias += trate * new_delta[idx];
 		}
 		return new_delta;
 	}
