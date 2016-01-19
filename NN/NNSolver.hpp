@@ -463,7 +463,7 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		};
 
 		template<class NetworkStruct, class ActivationObject>
-		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(std::vector<typename NetworkStruct::size_t> number_of_units) :TRAINIG_RATE(t_rate) {
+		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(std::vector<typename NetworkStruct::size_t> number_of_units) {
 			std::random_device rnd;
 			std::mt19937 mt(rnd());
 			std::uniform_real_distribution<float> distribution(-1, 1);
@@ -472,11 +472,11 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 
 			for (typename NetworkStruct::size_t i = 0; i<neural.getNumberOfLayers(); i++) {
 				for (typename NetworkStruct::size_t j = 0; j<neural.getNumberOfUnits(i); j++) {
-					neural.network[i][j].bias = 0;
+					neural.getBias(i,j) = 0;
 					if (i == neural.getNumberOfLayers() - 1) {
-						std::fill(neural.network[i][j].weight.begin(), neural.network[i][j].weight.end(), 0);
+						std::fill(neural.getWeight(i, j).begin(), neural.getWeight(i, j).end(), 0);
 					}
-					else std::fill(neural.network[i][j].weight.begin(), neural.network[i][j].weight.end(), distribution(mt));
+					else std::fill(neural.getWeight(i, j).begin(), neural.getWeight(i, j).end(), distribution(mt()));
 				}
 			}
 		}
@@ -526,6 +526,10 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 		_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object(t_rate);
 		double RMSerror = 0.0, best = 1e6;
 		typename NetworkStruct::origin_data best_network;
+#ifdef DEBUG_MTL
+		std::ofstream ofs("training_result.csv");
+#endif	
+
 		neural.copy_to(best_network);
 
 		std::random_device rd;
@@ -538,9 +542,10 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
 				regulateWeight(training_list[j].first, training_list[j].second, training_object);
 			}
 			
-			RMSerror = calcError(training_list);
+			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
 #ifdef DEBUG_MTL
 			std::cout << i << ',' << RMSerror << std::endl;
+			ofs << i << "," << RMSerror << std::endl;
 #endif		
 			if (best > RMSerror) { 
 				best = RMSerror; 

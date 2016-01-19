@@ -19,7 +19,7 @@
 #include<utility>
 
 void ocr_nn(std::string filename){
-    auto trainig_sample = import_csv_from_density(filename,784,10);
+    auto trainig_sample = import_csv(filename,784,10);
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	network_struct[0] = 784;
 	network_struct[1] = 784;

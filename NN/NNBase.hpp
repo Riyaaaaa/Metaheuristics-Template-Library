@@ -134,8 +134,8 @@ float Unit_Dy_Amp<WEIGHT_SIZE>::output_amp()const restrict(amp){
 }
 
 class Map_Amp {
-public:　　　　
-	void   setStatus(float x, float y,float _s){ map_view[y][x] = _s; }
+public:
+	void setStatus(float x, float y,float _s){ map_view[y][x] = _s; }
 	/*float  getStatus(float x, float y)const restrict(cpu, amp) {
 		using c_i = concurrency::index<2>;
 		concurrency::index<2> idx;
@@ -156,7 +156,6 @@ public:　　　　
 	concurrency::array_view< float, 2 > w_mat_view;
 private:
 	std::vector< float > map;
-	std::vector< float > bias;
 };
 
 void Map_Amp::setSizeOfMap(Size size) {
@@ -414,6 +413,9 @@ public:
 	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& getLayer(size_t layer_index){ return network[layer_index]; };
 	Unit_Dy_Amp<W_SIZE> getUnit(size_t layer_index, size_t unit_index){ return network[layer_index][unit_index]; };
 
+	float* getWeight(size_t layer_index, size_t unit_index) { return network[layer_index][unit_index].weight; }
+	float& getBias(size_t layer_index, size_t unit_index){ return network[layer_index][unit_index].bias }
+
 	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& layerForwardIterator(size_t layer_index, size_t unit_index); //forward iterator for propagation.
 	Concurrency::array_view<Unit_Dy_Amp<W_SIZE>>& layerBackwordIterator(size_t layer_index, size_t unit_index);//backward iterator for propagation.
 
@@ -485,7 +487,8 @@ public:
 	static constexpr size_t FilterSize = Filter;
 
 	std::vector< std::vector< Map_Amp >  > network;
-	std::vector< std::vector< Map > > w_mat;
+	std::vector < std::vector< std::vector< Map > > > w_mat;
+	std::vector< std::vector<float> > bias;
 	std::vector< Size > sizes;
 
 	void copy_to(origin_data&);
@@ -499,6 +502,9 @@ public:
 
 	std::vector<Map_Amp>& getLayer(size_t layer_index) { return network[layer_index]; };
 	Map_Amp getUnit(size_t layer_index, size_t unit_index) { return network[layer_index][unit_index]; };
+
+	std::vector<Map>& getWeight(size_t layer_index, size_t unit_index) { return w_mat[layer_index][unit_index]; }
+	float& getBias(size_t layer_index, size_t unit_index) { return network[layer_index][unit_index].bias }
 
 	std::vector<Map_Amp>& layerForwardIterator(size_t layer_index, size_t unit_index); //forward iterator for propagation.
 	std::vector<Map_Amp>& layerBackwordIterator(size_t layer_index, size_t unit_index);//backward iterator for propagation.
