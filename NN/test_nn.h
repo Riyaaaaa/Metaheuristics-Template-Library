@@ -29,14 +29,14 @@ void test_nn(){
     //import_network_and_plot("xor_network_parameters.txt");
 
     //xor_nn_amp();
-	//xor_nn_dy();
+	xor_nn_dy();
 	//xor_nn_amp_fileio("../../NN/training_sample/xor_train.csv");
     //unit_test();
 	//ocr_train_trimmer(101);
 	//ocr_nn("../../NN/training_sample/ocr_train.csv");
 	//ocr_nn("ocr_test_scale_101.csv","ocr_network_testcase01.txt");
 	//ocr_test_trimmer(100);
-	ocr_nn("ocr_train_scale_101.csv");
+	//ocr_nn("ocr_train_scale_101.csv");
 	//ocr_calc_error("ocr_train_scale_101.csv", "ocr_network.txt");
 	//ocr_tester("ocr_test_scale_100.csv","ocr_network_0114_1110.txt");
 

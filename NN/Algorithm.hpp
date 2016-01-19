@@ -90,7 +90,7 @@ struct _elite_principle<Layer,ActivationObject,true>{
 	}
 
 	auto operator[](std::size_t i)const {
-		return i == idx ? return _layer[i].output(ActivationObject::activate) : ActivationObject::RANGE_MIN;
+		return i == idx ? _layer[i].output(ActivationObject::activate) : ActivationObject::RANGE_MIN;
 	}
 };
 
@@ -261,8 +261,9 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
 template<class Tuple,class ActivationObject>
 struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
     typedef std::vector<float> output_layer_t;
+	_Backpropagation(const float t_rate) :_trate(t_rate) {}
     
-    const double _trate = 0.05;
+    const double _trate;
     ActivationObject ao;
     
     std::vector<double> operator()(std::vector<Unit_Dy>& layer,const output_layer_t& target){
@@ -382,7 +383,7 @@ struct Backpropagation_Convolution {
 		return delta;
 	}
 
-	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< Map >& delta) {
+	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< Map<Net_t::FilterSize> >& delta) {
 		ActivationObject ao;
 		float trate = _trate;
 
@@ -395,9 +396,9 @@ struct Backpropagation_Convolution {
 				for (int j = 0; j < delta[i].size(); j++) {
 					for (int k = 0; k < Net_t::FilterSize) {
 						for (int l = 0; l < Net_t::FilterSize; l++) {
-							out = input_layer[idx].getStatus(j+l, i+k) + input_layer[idx].getBias(j+l, i+k);
-							input_layer[idx].w_mat_view[k][l] += trate * delta[i][j] * ao.activate(out);
-							propagation += input_layer[idx].w_mat_view[i] * delta[i][j] * ao.activateDerivative(out);
+							out = input_layer[idx].getStatus(j+l, i+k) + input_layer[idx].bias;
+							input_layer[idx].weight[i][k][l] += trate * delta[i][j] * ao.activate(out);
+							propagation += input_layer[idx].weight[i][k][l] * delta[i][j] * ao.activateDerivative(out);
 						}
 					}	
 				}
