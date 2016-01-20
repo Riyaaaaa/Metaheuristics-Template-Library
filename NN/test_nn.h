@@ -29,7 +29,7 @@ void test_nn(){
     //import_network_and_plot("xor_network_parameters.txt");
 
     //xor_nn_amp();
-	xor_nn_dy();
+	//xor_nn_dy();
 	//xor_nn_amp_fileio("../../NN/training_sample/xor_train.csv");
     //unit_test();
 	//ocr_train_trimmer(101);
@@ -50,11 +50,26 @@ void test_nn(){
 	export_csv("micachan.csv",samples);
 	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");*/
 
-	/*std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
-	network_struct[0] = 784;
-	network_struct[1] = 784;
-	network_struct[2] = 10;
-	mtl::NNSolver< mtl::FeedForward_Convolution<5>, mtl::tanh_af_gpu_accel > solver(network_struct);*/
+	mtl::FeedForward_Convolution<2>::struct_t network_struct;
+
+	network_struct.resize(2);
+
+	network_struct[0].resize(1);
+	network_struct[1].resize(3);
+
+	for (auto&& map : network_struct[0]) {
+		map = mtl::Size(3, 3);
+	}
+
+	for (auto&& map : network_struct[1]) {
+		map = mtl::Size(2, 2);
+	}
+
+	mtl::NNSolver< mtl::FeedForward_Convolution<2>, mtl::tanh_af_gpu_accel > solver(network_struct);
+
+	solver.solveAnswer({ {0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f} });
+
+	return;
 }
 
 #endif

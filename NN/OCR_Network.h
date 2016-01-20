@@ -29,7 +29,7 @@ void ocr_nn(std::string filename){
 	network.setStruct(network_struct);
     mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	//solver.setNetworkStruct(network_struct);
-    solver.training<mtl::Backpropagation_Gpu_Accel>(0.001,trainig_sample);
+    solver.training<mtl::Backpropagation_Gpu_Accel>(0.0003,trainig_sample);
 	network.exportNetwork("ocr_network.txt");
 	//network.exportNetwork("ocr_network.txt");
     

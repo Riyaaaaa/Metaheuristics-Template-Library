@@ -9,9 +9,7 @@
 #ifndef MTL_Development_Algorithm_hpp
 #define MTL_Development_Algorithm_hpp
 
-#include<cmath>
-#include<amp.h>
-#include<amp_math.h>
+#include<numeric>
 #include"Utility.hpp"
 #include"NNBase.hpp"
 #include"../configuration.h"
@@ -363,7 +361,7 @@ struct Backpropagation_Gpu_Accel{
 
 template<class Net_t, class ActivationObject>
 struct Backpropagation_Convolution {
-	typedef std::vector<float> output_layer_t;
+	typedef std::vector< typename Net_t::Status_t > output_layer_t;
 	Backpropagation_Convolution(const float t_rate) :_trate(t_rate) {}
 
 	const float _trate;
@@ -371,13 +369,14 @@ struct Backpropagation_Convolution {
 	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& layer, const output_layer_t& target) {
 		ActivationObject ao;
 		float out;
-		std::vector<float> delta(target.size());
+		std::vector< typename Net_t::Status_t > delta(target.size());
 
-		for (std::size_t i = 0; i<target.size(); i++) {
-			out = layer[i].output(ao.activate);
-			delta[i] = (target[i] - out);
-			//delta[i] = ao.activateDerivative(out) * (target[i] - out);
-			layer[i].bias += _trate * delta[i];
+		for (std::size_t i = 0; i < target.size(); i++) {
+			for (size_t j = 0; j < target[i].size(); j++) {
+				out = ao.activate(layer[i].map[j]);
+				delta[i][j] = (target[i][j] - out);
+			}
+			layer[i].bias += _trate * std::accumulate(delta[i].begin(), delta[i].end(), 0.0f);
 		}
 
 		return delta;

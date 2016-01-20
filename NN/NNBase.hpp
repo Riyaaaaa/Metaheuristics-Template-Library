@@ -9,8 +9,10 @@
 #ifndef __MTL_Development__NNBase__
 #define __MTL_Development__NNBase__
 
+#include<cmath>
+#include<amp.h>
+#include<amp_math.h>
 #include <array>
-#include <amp.h>
 #include <utility>
 #include <fstream>
 #include "Utility.hpp"
@@ -64,6 +66,7 @@ double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
 
 class Unit_Dy{
 public:
+	typedef float Status_t;
     double bias=0.5;
     std::vector<double> weight;
     
@@ -139,37 +142,40 @@ float Unit_Dy_Amp<WEIGHT_SIZE>::output_amp()const restrict(amp){
 template<std::size_t FilterSize>
 class Map_Amp {
 public:
-	void setStatus(float x, float y,float _s){ map_view[y][x] = _s; }
+	typedef std::vector<float> Status_t;
+	void setStatus(float x, float y,float _s){ map[y*size.width +x] = _s; }
+	void setStatus(std::vector<float> v) { map = v; }
+	
 	/*float  getStatus(float x, float y)const restrict(cpu, amp) {
 		using c_i = concurrency::index<2>;
 		concurrency::index<2> idx;
 		return map_view[c_i(y-1,x-1)] + map_view[c_i(y - 1,x)] + map_view[c_i(y - 1,x+1)] + map_view[c_i(y,x - 1)] + map_view[c_i(y,x)] + map_view[c_i(y,x+1)] + map_view[c_i(y + 1,x+1)] + map_view[c_i(y + 1,x)] + map_view[c_i(y + 1,x+1)];
 	}*/
 	float getStatus(float x,float y)const{
-		return map_view[y][x];
+		return map[y*size.width + x];
 	}
-
 
 	template<class F>
 	float output(F&& f)const;
 
-	void setSizeOfMap(Size size);
+	void setSizeOfMap(Size _size);
 	std::vector< Map<FilterSize> > weight;
 	std::vector< float > map;
 	float bias;
+	Size size;
 
-	concurrency::array_view<float, 2>& getMap() { return map_view; }
-	concurrency::array_view< float, 2 > map_view;
+	std::vector<float>& getMap() { return map; }
+	/*concurrency::array_view< float, 2 > map_view;
 	concurrency::array_view< float, 2 > bias_view;
-	concurrency::array_view< float, 2 > w_mat_view;
+	concurrency::array_view< float, 2 > w_mat_view;*/
 private:
 	
 };
 
 template<std::size_t FilterSize>
-void Map_Amp<FilterSize>::setSizeOfMap(Size size) {
+void Map_Amp<FilterSize>::setSizeOfMap(Size _size) {
 	map.resize(size.width * size.height);
-	map_view = concurrency::array_view<float, 2>(size.height, size.width, reinterpret_cast<float*>(&map[0]));
+	size = _size;
 }
 template<std::size_t FilterSize>
 template<class F>
@@ -552,7 +558,7 @@ public:
 	typedef std::vector< std::vector<float> > structure;
 	typedef std::vector< std::vector<Size> > struct_t;
 	typedef Map_Amp<Filter> Unit_t;
-	typedef AMP tag;
+	typedef DYNAMIC tag;
 	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
 	typedef unsigned int size_t;
 
@@ -566,7 +572,10 @@ public:
 	std::vector< std::vector< Map_Amp<Filter> >  > network;
 	std::vector< Size > sizes;
 
-	void setSizeOfMap(size_t layer_index, size_t map_index, Size size) { network[layer_index][unit_index].setSizeOfMap(size); };
+	void setSizeOfMap(size_t layer_index, size_t map_index, Size size) { 
+		sizes[layer_index] = size;
+		network[layer_index][map_index].setSizeOfMap(size); 
+	};
 
 	size_t getNumberOfLayers() { return network.size(); }
 	size_t getNumberOfUnits(size_t layer_index) { return network[layer_index].size(); }
@@ -590,13 +599,13 @@ template<std::size_t Filter>
 FeedForward_Convolution<Filter>::FeedForward_Convolution(const struct_t& size_of_maps,Range range) {
 	network.resize( size_of_maps.size() );
 	for (size_t i = 0; i<size_of_maps.size(); i++) {
-		network[i].resize(size_of_maps[i]);
+		network[i].resize(size_of_maps[i].size());
 	}
 
 	for (size_t i = 0; i<size_of_maps.size() - 1; i++) {
 		//todo autholize
 		for (size_t j = 0; j<size_of_maps[i].size(); j++) {
-			network[i][j].map.resize(size_of_maps[i][j].height * size_of_maps[i][j].width + size_of_maps[i][j].width);
+			setSizeOfMap(i,j,size_of_maps[i][j]);
 			network[i][j].weight.resize(size_of_maps[i + 1].size());
 		}
 	}
@@ -605,13 +614,22 @@ FeedForward_Convolution<Filter>::FeedForward_Convolution(const struct_t& size_of
 	std::mt19937 mt(rnd());
 	std::uniform_real_distribution<double> distribution(range.min_, range.max_);
 
+	Map<Filter> zeros_map;
+	for (auto&& cols : zeros_map) { for (auto&& unit : cols) unit = 0.0f; }
+
 	for (size_t i = 0; i<getNumberOfLayers(); i++) {
 		for (size_t j = 0; j<getNumberOfUnits(i); j++) {
 			network[i][j].bias = 0;
+			network[i][j].setSizeOfMap(size_of_maps[i][j]);
+
 			if (i == getNumberOfLayers() - 1) {
-				std::fill(network[i][j].weight.begin(), network[i][j].weight.end(), 0.0f);
+				std::fill(network[i][j].weight.begin(), network[i][j].weight.end(), zeros_map);
 			}
-			else std::fill(network[i][j].weight.begin(), network[i][j].weight.end(), distribution(mt));
+			else {
+				Map<Filter> rnd_map;
+				for (auto&& cols : rnd_map) { for (auto&& unit : cols) unit = distribution(mt); }
+				std::fill(network[i][j].weight.begin(), network[i][j].weight.end(), rnd_map);
+			}
 		}
 	}
 }
@@ -621,28 +639,40 @@ struct calcConvolution {
 	void operator()(NetworkStruct& neural) {
 		ActivationObject ao;
 		for (int i = 1; i<neural.getNumberOfLayers(); i++) {
-				std::vector< NetworkStruct::Unit_t >& layer = neural.network[i][j];
-				std::vector< NetworkStruct::Unit_t >& back_layer = neural.network[i - 1][j];
-				for (int j = 0; j < neural.getNumberOfUnits; j++) {
+				std::vector< typename NetworkStruct::Unit_t >& layer = neural.network[i];
+				std::vector< typename NetworkStruct::Unit_t >& back_layer = neural.network[i - 1];
+				for (int j = 0; j < neural.getNumberOfUnits(i); j++) {
 					//gpu acceleration
 					const Size size = neural.getSizeOfMap(i);
 					for (int k = 0; k < size.height; k++) {
-						for (int k = 0; l < size.width; l++) {
-							layer[k][l].setStatus(sigma(back_layer, idx[0]));
+						for (int l = 0; l < size.width; l++) {
+							layer[j].setStatus(l,k,dot(back_layer, Point(l,k), j));
 						}
 					}
 				}
 		}
 	}
-	static float sigma(const std::vector< typename NetworkStruct::Unit_t > & input_layer, int windowid)restrict(amp) {
+	static float dot(const std::vector< typename NetworkStruct::Unit_t > & input_layer, Point map_index, size_t mapid){
 		float sum = 0;
-		const size_t f_size = NetworkStruct::FilterSize;
+		const int f_size = NetworkStruct::FilterSize;
+		float status;
+		concurrency::array_view< float, 1 > s_view(1, &status);
+
 		for (int i = 0; i < input_layer.size(); i++) {
-			concurrency< float, 2 >& map = input_layer[i].map;
-			concurrency::get_extent<2> ex = { map.get_extent()[0] - f_size / 2 * 2, map.get_extent[1] - f_size / 2 * 2 };
-			parallel_for_each(ex, [=](concurrency::index<2> idx) {
-				sum += ActivationObject::activate_amp(input_layer[i].getStatus(idx[1],idx[0]) + input_layer[i].bias) * input_layer[i].weight[unitid];
+			float bias = input_layer[i].bias;
+			status = 0;
+			concurrency::array_view<const float, 2 > map( input_layer[i].size.height, input_layer[i].size.width, reinterpret_cast<const float*>(&input_layer[i].map[0]));
+			concurrency::array_view<const float, 2> weight( f_size, f_size, reinterpret_cast<const float*>(&input_layer[i].weight[mapid][0][0]));
+			concurrency::extent<2> ex = { map.get_extent()[0] - f_size / 2 * 2, map.get_extent()[1] - f_size / 2 * 2 };
+
+			parallel_for_each(ex, [=](concurrency::index<2> idx)restrict(amp) {
+				for (int j = 0; j < f_size; j++) {
+					for (int k = 0; k < f_size; k++) {
+						s_view[0] += map[idx[1] + map_index.y + j][idx[0] + map_index.x + k] * weight[j][k];
+					}
+				}
 			});
+			sum += ActivationObject::activate(s_view[0] + bias);
 		}
 		return sum;
 	}
