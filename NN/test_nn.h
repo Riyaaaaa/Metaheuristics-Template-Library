@@ -50,25 +50,45 @@ void test_nn(){
 	export_csv("micachan.csv",samples);
 	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");*/
 
-	mtl::FeedForward_Convolution<2>::struct_t network_struct;
+	mtl::FeedForward_Convolution<5>::struct_t network_struct;
 
 	network_struct.resize(2);
 
 	network_struct[0].resize(1);
-	network_struct[1].resize(3);
+	network_struct[1].resize(5);
 
 	for (auto&& map : network_struct[0]) {
-		map = mtl::Size(3, 3);
+		map = mtl::Size(28, 28);
 	}
 
 	for (auto&& map : network_struct[1]) {
-		map = mtl::Size(2, 2);
+		map = mtl::Size(24, 24);
 	}
 
 	mtl::NNSolver< mtl::FeedForward_Convolution<2>, mtl::tanh_af_gpu_accel > solver(network_struct);
 
-	solver.solveAnswer({ {0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f} });
+	std::vector< std::vector<float> > sensory(1 , std::vector<float>(28*28));
+	std::fill(sensory[0].begin(), sensory[0].end(), 0.1f);
+	auto& output = solver.solveAnswer(sensory);
 
+	for (auto&& map: output) {
+		for (auto&& status: map.map) {
+			std::cout << status << ",";
+		}
+		std::cout << std::endl;
+	}
+
+	std::cout << "-----------p0oling----------" << std::endl;
+
+	mtl::max_pooling< std::vector< typename mtl::FeedForward_Convolution<2>::Unit_t >, 2 > pooling_layer(solver.neural.network[1]);
+
+	for (int i = 0; i < solver.neural.network[1].size(); i++) {
+		for (int j = 0; j < pooling_layer[i].size(); j++) {
+			std::cout << pooling_layer[i][j] << ",";
+		}
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
 	return;
 }
 

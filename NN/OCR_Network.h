@@ -18,6 +18,35 @@
 #include<vector>
 #include<utility>
 
+void ocr_nn_convolution(std::string filename) {
+	auto trainig_sample = import_csv(filename, 784, 10);
+	mtl::FeedForward_Convolution<5>::struct_t network_struct_cnn;
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	mtl::FeedForward_Amp<784> network;
+
+	network_struct[0] = 784;
+	network_struct[1] = 784;
+	network_struct[2] = 10;
+
+	network.setStruct(network_struct);
+
+	network_struct_cnn.resize(2);
+	network_struct_cnn[0].resize(1);
+	network_struct_cnn[1].resize(20);
+
+	for (auto&& map : network_struct_cnn[0]) {
+		map = mtl::Size(28, 28);
+	}
+	for (auto&& map : network_struct_cnn[1]) {
+		map = mtl::Size(24, 24);
+	}
+
+	mtl::NNSolver< mtl::FeedForward_Convolution<2>, mtl::tanh_af_gpu_accel > solver_cnn(network_struct_cnn);
+	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver_perceptron(network);
+
+
+}
+
 void ocr_nn(std::string filename){
     auto trainig_sample = import_csv(filename,784,10);
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);

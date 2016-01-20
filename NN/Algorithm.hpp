@@ -9,6 +9,7 @@
 #ifndef MTL_Development_Algorithm_hpp
 #define MTL_Development_Algorithm_hpp
 
+#include<algorithm>
 #include<numeric>
 #include"Utility.hpp"
 #include"NNBase.hpp"
@@ -70,6 +71,40 @@ struct no_principle {
 
 	auto operator[](std::size_t i) const{
 		return _layer[i].output(ActivationObject::activate);
+	}
+};
+
+
+//need to layer.size % Filter == 0
+template<class Layer, std::size_t Filter>
+struct max_pooling {
+	const Layer& _layer;
+	std::vector< std::vector<float> > pooling_layer;
+	max_pooling( const Layer& layer ):_layer(layer) {
+		pooling_layer.resize(_layer.size());
+		for (int i = 0; i < _layer.size(); i++) {
+
+			pooling_layer[i].resize( (_layer[i].size.width / Filter) * (_layer[i].size.height / Filter) );
+
+			for (int j = 0; j < _layer[i].size.height; j+=Filter) {
+				for (int k = 0; k < _layer[i].size.width; k+=Filter) {
+					float max = -1000;
+					for (int y = 0; y < Filter; y++) {
+						for (int x = 0; x < Filter; x++) {
+							float status = _layer[i].map[(j + y)*_layer[i].size.width + (k + x)];
+							if (max < status)max = status;
+						}
+					}
+					pooling_layer[i][ j/Filter * (_layer[i].size.width / Filter ) + k/Filter] = max;
+				}
+			}
+		}
+	}
+	const std::vector<float>& operator[](std::size_t i)const {
+		return pooling_layer[i];
+	}
+	std::vector<float>& operator[](std::size_t i){
+		return pooling_layer[i];
 	}
 };
 
@@ -371,7 +406,8 @@ struct Backpropagation_Convolution {
 		float out;
 		std::vector< typename Net_t::Status_t > delta(target.size());
 
-		for (std::size_t i = 0; i < target.size(); i++) {
+		for (size_t i = 0; i < target.size(); i++) {
+			delta[i].resize(target[i].size());
 			for (size_t j = 0; j < target[i].size(); j++) {
 				out = ao.activate(layer[i].map[j]);
 				delta[i][j] = (target[i][j] - out);
@@ -382,7 +418,7 @@ struct Backpropagation_Convolution {
 		return delta;
 	}
 
-	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< Map<Net_t::FilterSize> >& delta) {
+	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< typename Net_t::Status_t >& delta) {
 		ActivationObject ao;
 		float trate = _trate;
 

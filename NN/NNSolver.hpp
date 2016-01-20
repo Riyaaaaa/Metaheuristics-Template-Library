@@ -15,6 +15,7 @@
 #include<vector>
 #include<random>
 #include<cmath>
+#include<tuple>
 #include"Algorithm.hpp"
 #include"NNBase.hpp"
 #include"Utility.hpp"
@@ -273,9 +274,15 @@ public:
 	void training(float t_rate, training_list_t& training_list);
     
     template<class _TRAINING_OBJECT>
-    void regulateWeight(const std::vector<float>& input,
+    auto regulateWeight(const std::vector<float>& input,
                         const std::vector<float>& target,
                         _TRAINING_OBJECT& _training_algorithm);
+
+	template<class _TRAINING_OBJECT>
+	auto regulateWeight(const std::vector<float>& input,
+						const std::vector<float>& target,
+						cosst std::vector<float>& delta,
+					_TRAINING_OBJECT& _training_algorithm);
     
 	float calcError(training_list_t& training_list);
 
@@ -355,16 +362,27 @@ float _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::calcError(training_li
 
 template<class NetworkStruct,class ActivationObject>
 template<class _TRAINING_OBJECT>
-void _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std::vector<float>& input,
+auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std::vector<float>& input,
 		const std::vector<float>& target,
 		_TRAINING_OBJECT& _training_algorithm){
         inputting(neural.network.front(), input);
 		NetworkStruct::Calc_Func<ActivationObject>()(neural);
     
     auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
-    for(int i=neural.getNumberOfLayers()-2; i>=0; i--){
-        delta = _training_algorithm(neural.network[i],target,delta);
-    }
+	return regulateWeight(input,target,delta,_training_algorithm);
+}
+
+template<class NetworkStruct, class ActivationObject>
+template<class _TRAINING_OBJECT>
+auto _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::regulateWeight(const std::vector<float>& input,
+	const std::vector<float>& target,
+	cosst std::vector<float>& delta,
+	_TRAINING_OBJECT& _training_algorithm) {
+
+	for (int i = neural.getNumberOfLayers() - 2; i >= 0; i--) {
+		delta = _training_algorithm(neural.network[i], target, delta);
+	}
+	return delta;
 }
         
         

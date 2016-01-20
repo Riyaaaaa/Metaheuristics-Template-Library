@@ -190,6 +190,7 @@ float Map_Amp<FilterSize>::output(F&& f)const{
 struct STATIC{};
 struct DYNAMIC{};
 struct AMP {};
+struct COMPOSITE {};
 
 template<std::size_t _First , std::size_t _Last , std::size_t... Args>
 class FeedForward{
@@ -598,15 +599,16 @@ private:
 template<std::size_t Filter>
 FeedForward_Convolution<Filter>::FeedForward_Convolution(const struct_t& size_of_maps,Range range) {
 	network.resize( size_of_maps.size() );
+	sizes.resize( size_of_maps.size() );
 	for (size_t i = 0; i<size_of_maps.size(); i++) {
 		network[i].resize(size_of_maps[i].size());
 	}
 
-	for (size_t i = 0; i<size_of_maps.size() - 1; i++) {
+	for (size_t i = 0; i<size_of_maps.size(); i++) {
 		//todo autholize
 		for (size_t j = 0; j<size_of_maps[i].size(); j++) {
 			setSizeOfMap(i,j,size_of_maps[i][j]);
-			network[i][j].weight.resize(size_of_maps[i + 1].size());
+			network[i][j].weight.resize(i != size_of_maps.size() - 1 ? size_of_maps[i + 1].size() : 0);
 		}
 	}
 
@@ -627,8 +629,10 @@ FeedForward_Convolution<Filter>::FeedForward_Convolution(const struct_t& size_of
 			}
 			else {
 				Map<Filter> rnd_map;
-				for (auto&& cols : rnd_map) { for (auto&& unit : cols) unit = distribution(mt); }
-				std::fill(network[i][j].weight.begin(), network[i][j].weight.end(), rnd_map);
+				for (int idx = 0; idx < network[i][j].weight.size(); idx++) {
+					for (auto&& cols : rnd_map) { for (auto&& unit : cols) unit = distribution(mt); }
+					network[i][j].weight[idx] = rnd_map;
+				}
 			}
 		}
 	}
@@ -646,6 +650,7 @@ struct calcConvolution {
 					const Size size = neural.getSizeOfMap(i);
 					for (int k = 0; k < size.height; k++) {
 						for (int l = 0; l < size.width; l++) {
+							std::cout << "i: " << i << " j: " << j << " k: " << k << " l: " << l << std::endl;
 							layer[j].setStatus(l,k,dot(back_layer, Point(l,k), j));
 						}
 					}
@@ -659,20 +664,19 @@ struct calcConvolution {
 		concurrency::array_view< float, 1 > s_view(1, &status);
 
 		for (int i = 0; i < input_layer.size(); i++) {
-			float bias = input_layer[i].bias;
-			status = 0;
 			concurrency::array_view<const float, 2 > map( input_layer[i].size.height, input_layer[i].size.width, reinterpret_cast<const float*>(&input_layer[i].map[0]));
 			concurrency::array_view<const float, 2> weight( f_size, f_size, reinterpret_cast<const float*>(&input_layer[i].weight[mapid][0][0]));
-			concurrency::extent<2> ex = { map.get_extent()[0] - f_size / 2 * 2, map.get_extent()[1] - f_size / 2 * 2 };
 
-			parallel_for_each(ex, [=](concurrency::index<2> idx)restrict(amp) {
-				for (int j = 0; j < f_size; j++) {
-					for (int k = 0; k < f_size; k++) {
-						s_view[0] += map[idx[1] + map_index.y + j][idx[0] + map_index.x + k] * weight[j][k];
-					}
+			/*parallel_for_each(weight.get_extent(), [=](concurrency::index<2> idx)restrict(amp) {
+				s_view[0] += map[idx[1] + map_index.y][idx[0] + map_index.x] * weight[idx[1]][idx[0]];
+			});*/
+			for (int j = 0; j < f_size; j++) {
+				for (int k = 0; k < f_size; k++) {
+					std::cout << " j: " << j << " k: " << k << std::endl;
+					s_view[0] += map[map_index.y + j][map_index.x + k] * weight[j][k];
 				}
-			});
-			sum += ActivationObject::activate(s_view[0] + bias);
+			}
+			sum += ActivationObject::activate(s_view[0] + input_layer[i].bias);
 		}
 		return sum;
 	}
