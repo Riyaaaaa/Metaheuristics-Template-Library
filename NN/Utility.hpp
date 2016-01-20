@@ -239,13 +239,88 @@ struct array_base < Ty[size] >
 {
     using type = Ty;
 };
-template < class Ty, std::size_t size >
-struct array_base < std::array < Ty, size > >
+template < template<class T, std::size_t s> class Array, class Ty, std::size_t size >
+struct array_base < Array < Ty, size > >
 {
     using type = Ty;
 };
+
+template < template<class T, class A> class Array, class Ty, class Allocator >
+struct array_base < Array < Ty, Allocator > >
+{
+	using allocator = Allocator;
+	using type = Ty;
+};
+
+
 template < class Ty >
 using array_base_t = typename array_base < Ty >::type;
+
+template <template <class...> class T, template <class...> class U>
+struct is_same_template : std::false_type {};
+
+template <template <class...> class T>
+struct is_same_template<T, T> : std::true_type {};
+
+template <template <class...> class T>
+struct is_array_template {
+	static constexpr bool value =
+		is_same_template<T, std::vector>::value ||
+		is_same_template<T, std::list>::value ||
+		is_same_template<T, std::deque>::value ||
+		is_same_template<T, std::set>::value ||
+		is_same_template<T, std::unordered_set>::value;
+};
+
+template <template <class...> class T>
+struct is_object_template {
+	static constexpr bool value =
+		is_same_template<T, std::map>::value ||
+		is_same_template<T, std::unordered_map>::value;
+};
+
+template <template <class...> class T>
+struct is_container_template {
+	static constexpr bool value =
+		is_array_template<T>::value || is_object_template<T>::value;
+};
+
+template <class E>
+struct is_container {
+	static constexpr bool value = false;
+};
+
+template <template <class...> class T, class... Args>
+struct is_container<T<Args...>> : is_container_template<T> {};
+
+//template< template<class...> class Container, class T, class Allocator>
+//struct _Container_Initializer;
+//
+//template< template<class...> class Container, class T = typename array_base<Container>::type, class Allocator = typename array_base<Container>::allocator >
+//struct Container_Initializer_traits{
+//	using type = _Container_Initializer<Container, T, Allocator>;
+//};
+//
+//template< template<class...> class Container >
+//using Container_Initializer = typename Container_Initializer_traits<Container>::type;
+//
+//template< template<class...> class Container, class T, class Allocator>
+//struct _Container_Initializer{
+//	static void init(Container<T,Allocator> container, T value) {
+//		std::fill(container.begin(), container.end(), value);
+//	}
+//};
+//
+//template< template<class> class Container, template<class...> class InnerContainer, class T, class Allocator >
+//struct _Container_Initializer<Container, InnerContainer<T,Allocator>, Allocator>{
+//	static void init( Container< InnerContainer<T, Allocator>, Allocator> container, T value) {
+//		for (auto&& n : container) {
+//			Container_Initializer< InnnerContainer >::init(n, value);
+//		}
+//	}
+//};
+
+
 
 LIB_SCOPE_END()
 

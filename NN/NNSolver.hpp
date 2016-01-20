@@ -22,24 +22,13 @@
 
 LIB_SCOPE_BEGIN()
 
-template<class Layer>
-static double statusScanning(const Layer layer, const std::array<double, std::tuple_size<Layer>::value> target){
-    double RMSerror=0.0;
-    for(int i=0; i<std::tuple_size<Layer>::value ; i++){
-        RMSerror += std::pow(fabs(layer[i].getStatus() - target[i]),2);
-        //RMSerror += 0.25*(-target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus()));
-#ifdef DEBUG_MTL
-        //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
-#endif
-    }
-    return RMSerror;
-}
 
-template<class Layer>
-static double statusScanning(const Layer layer, const std::vector<float> target){
+
+template<class Layer, class Target_t>
+static double statusScanning(const Layer& layer, const Target_t& target){
     double RMSerror=0.0;
     for(int i=0; i<target.size() ; i++){
-        RMSerror += 0.5 * std::pow(fabs(layer[i].getStatus() - target[i]),2);
+		RMSerror += 0.5 * std::pow(fabs(layer[i] - target[i]),2);
         //RMSerror += -target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus());
 #ifdef DEBUG_MTL
         //std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
@@ -48,18 +37,24 @@ static double statusScanning(const Layer layer, const std::vector<float> target)
     return RMSerror;
 }
 
-template<class Layer>
-static void inputting(Layer& layer, const std::array<double, std::tuple_size<Layer>::value> input){
-	for(int i=0; i<std::tuple_size<Layer>::value; i++){
+//template<class Layer, class Target_t = std::array<double, std::tuple_size<Layer>::value>>
+//static double statusScanning<>(const Layer layer, const Target_t target) {
+//	double RMSerror = 0.0;
+//	for (int i = 0; i<std::tuple_size<Layer>::value; i++) {
+//		RMSerror += std::pow(fabs(layer[i].getStatus() - target[i]), 2);
+//		//RMSerror += 0.25*(-target[i]*std::log(layer[i].getStatus())-(1-target[i])*std::log(1-layer[i].getStatus()));
+//#ifdef DEBUG_MTL
+//		//std::cout << i+1 << "th units output " << layer[i].getStatus() << ", target value= " << target[i] << std::endl;
+//#endif
+//	}
+//	return RMSerror;
+//}
+
+template<class Layer, class Input_t>
+static void inputting(Layer& layer, const Input_t& input) {
+	for (int i = 0; i<input.size(); i++) {
 		layer[i].setStatus(input[i]);
 	}
-}
-
-template<class Layer>
-static void inputting(Layer& layer, const std::vector<float> input){
-    for(int i=0; i<input.size(); i++){
-        layer[i].setStatus(input[i]);
-    }
 }
 
 template<class NetworkStruct,class ActivationObject,class TAG>
@@ -120,7 +115,7 @@ _NNSolver<NetworkStruct,ActivationObject,STATIC>::_NNSolver(double t_rate):TRAIN
 	surfaceExecuteAll<0, LAYER_SIZE-1>(neural.network, [](auto& surface){
 			std::random_device rnd;
 			std::mt19937 mt(rnd());
-			std::uniform_real_distribution<double> distribution(-1,1);
+			std::uniform_real_distribution<double> distribution(ActivationObject::RANGE_MIN, ActivationObject::RANGE_MAX);
 			for(int i=0; i<surface.size(); i++){
 			surface[i].bias = 0;
 			std::fill(surface[i].weight.begin(),surface[i].weight.end(),distribution(mt));
@@ -227,12 +222,9 @@ template<class NetworkStruct,class ActivationObject>
 struct _NNSolver<NetworkStruct,ActivationObject,STATIC>::calcSurface{
 	template<std::size_t index>
 		void operator()(NetworkStruct& neural){
-#ifdef STATIC_NETWORK
 			static_for_nested<0,NetworkStruct::template getLayerSize<index>(),index>(unit_iterating(),neural);
-#endif
 		}
 
-#ifdef STATIC_NETWORK
 	struct unit_iterating{
 		ActivationObject ao;
 		template<std::size_t unit_index,std::size_t index,class T>
@@ -242,7 +234,6 @@ struct _NNSolver<NetworkStruct,ActivationObject,STATIC>::calcSurface{
 				unit.setStatus(ao.activate(sum+unit.bias));
 			}
 	};
-#endif
 
 	template<class Layer>
 		static double sigma(const Layer& input_layer,int unitid){
@@ -261,116 +252,105 @@ struct _NNSolver<NetworkStruct,ActivationObject,STATIC>::calcSurface{
 template<class NetworkStruct,class ActivationObject>
 class _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>{
 public:
-    explicit _NNSolver(double t_rate,std::vector<typename NetworkStruct::size_t> number_of_uints);
-    explicit _NNSolver(double t_rate);
+    explicit _NNSolver(const typename NetworkStruct::struct_t& number_of_uints);
+	_NNSolver() = default;
     
     NetworkStruct neural;
-    typedef typename std::vector<Unit_Dy> output_layer;
-    typedef typename std::vector<Unit_Dy> input_layer;
-    
-    const double TRAINIG_RATE;
+	using Unit_t = typename NetworkStruct::Unit_t;
+    typedef typename std::vector<Unit_t> output_layer;
+    typedef typename std::vector<Unit_t> input_layer;
+	typedef std::vector< std::pair< std::vector<float>, std::vector<float> > > training_list_t;
     
     void setNumberOfUnitsOfLayers(std::vector<int> num_units);
     void setNumberOfUnitsByLayerIndex(int num_nutis);
     
     void setNetworkStruct(std::vector<typename NetworkStruct::size_t> number_of_uints);
     
-    auto solveAnswer(std::vector<float>)
+    auto solveAnswer(const std::vector< typename Unit_t::Status_t >&)
     ->const output_layer;
     
     template<template<class,class>class _TRAINING_OBJECT>
-    auto training(std::vector<
-                  std::pair<
-                  std::vector<float>,
-                  std::vector<float>
-                  >
-                  >& training_list)
-    ->const output_layer&;
+	void training(float t_rate, training_list_t& training_list);
     
     template<class _TRAINING_OBJECT>
     void regulateWeight(const std::vector<float>& input,
                         const std::vector<float>& target,
                         _TRAINING_OBJECT& _training_algorithm);
     
+	float calcError(training_list_t& training_list);
+
     bool exportNetwork(std::string filename);
     bool importNetwork(std::string filename);
     
 private:
-    struct calcSurface;
 };
 
 template<class NetworkStruct,class ActivationObject>
-_NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::_NNSolver(double t_rate,std::vector<typename NetworkStruct::size_t> number_of_uints):TRAINIG_RATE(t_rate){
-    std::random_device rnd;
-    std::mt19937 mt(rnd());
-    std::uniform_real_distribution<double> distribution(-1,1);
+_NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::_NNSolver(const typename NetworkStruct::struct_t& number_of_units):neural(number_of_units, Range(ActivationObject::RANGE_MIN, ActivationObject::RANGE_MAX)) {
     
-    setNetworkStruct(number_of_uints);
-    
-    for(typename NetworkStruct::size_t i=0; i<neural.getNumberOfLayers(); i++){
-        for(typename NetworkStruct::size_t j=0; j<neural.getNumberOfUnits(i); j++){
-            neural.network[i][j].bias = 0;
-            if( i==neural.getNumberOfLayers()-1 ) {
-                std::fill(neural.network[i][j].weight.begin(),neural.network[i][j].weight.end(),0);
-            }
-            else std::fill(neural.network[i][j].weight.begin(),neural.network[i][j].weight.end(),distribution(mt));
-        }
-    }
 }
-        
-        template<class NetworkStruct,class ActivationObject>
-        _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::_NNSolver(double t_rate):TRAINIG_RATE(t_rate){
-        }
-
+ 
 	template<class NetworkStruct,class ActivationObject>
-auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::solveAnswer(const std::vector<float> sensory)
+auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::solveAnswer(const std::vector< typename Unit_t::Status_t >& sensory)
 	->const output_layer{
 
-		inputting(neural.network[0],sensory);
+		inputting(neural.network.front(),sensory);
 
-        calcSurface()(neural);
+	NetworkStruct::Calc_Func<ActivationObject>()(neural);
 
 		return neural.network.back();
 }
 
 template<class NetworkStruct,class ActivationObject>
 template<template<class,class>class _TRAINING_OBJECT>
-auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::training(std::vector<
-		std::pair<
-		std::vector<float>,
-		std::vector<float>
-		>
-		>& training_list)
-->const output_layer&{
-	const std::size_t TRAINIG_LIMITS = 500;
+void _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::training(float t_rate, training_list_t& training_list) {
+	const std::size_t TRAINIG_LIMITS = 100;
 
-	_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object;
+	_TRAINING_OBJECT<NetworkStruct, ActivationObject> training_object(t_rate);
 	double RMSerror = 0.0, best = 1e6;
 	NetworkStruct best_network;
+#ifdef DEBUG_MTL
+	std::ofstream ofs("training_result.csv");
+#endif	
+
+	best_network = neural;
+
 	std::random_device rd;
 	std::mt19937 mt(rd());
 
-	for(int i=0; i<TRAINIG_LIMITS; i++){
-		std::shuffle(training_list.begin(), training_list.end(),mt);
-		for(auto& training_target: training_list){
-			regulateWeight(training_target.first, training_target.second, training_object);
-			RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+	for (int i = 0; i<TRAINIG_LIMITS; i++) {
+		std::shuffle(training_list.begin(), training_list.end(), mt);
+		//for (auto& training_target : training_list) {
+		for (int j = 0; j < training_list.size(); j++) {
+			regulateWeight(training_list[j].first, training_list[j].second, training_object);
 		}
+
+		RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
 #ifdef DEBUG_MTL
 		std::cout << i << ',' << RMSerror << std::endl;
-#endif
-		if(best > RMSerror){ best = RMSerror; best_network = neural;}
+		ofs << i << "," << RMSerror << std::endl;
+#endif		
+		if (best > RMSerror) {
+			best = RMSerror;
+			best_network = neural;
+		}
 		RMSerror = 0.0;
+
 	}
-#ifdef DEBUG_MTL
-	//std::cout << "best value = " << best << std::endl;
-#endif
 	neural = best_network;
-	for(auto& training_target: training_list){
-		regulateWeight(training_target.first, training_target.second, training_object);
-		RMSerror += statusScanning(solveAnswer(training_target.first),training_target.second);
+	RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+	
+	std::cout << "training result: sum of train sample error = " << RMSerror << std::endl;
+}
+
+template<class NetworkStruct, class ActivationObject>
+float _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::calcError(training_list_t& training_list) {
+	float RMSerror = 0;
+	for (int j = 0; j < training_list.size(); j++) {
+		RMSerror += statusScanning(no_principle<std::vector<Unit_t>, ActivationObject>(solveAnswer(training_list[j].first)), training_list[j].second);
 	}
-	return neural.network.back();
+
+	return RMSerror;
 }
 
 template<class NetworkStruct,class ActivationObject>
@@ -379,7 +359,7 @@ void _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std
 		const std::vector<float>& target,
 		_TRAINING_OBJECT& _training_algorithm){
         inputting(neural.network.front(), input);
-		calcSurface()(neural);
+		NetworkStruct::Calc_Func<ActivationObject>()(neural);
     
     auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
     for(int i=neural.getNumberOfLayers()-2; i>=0; i--){
@@ -405,24 +385,6 @@ template<class NetworkStruct,class ActivationObject>
             
         }
 
-template<class NetworkStruct,class ActivationObject>
-struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
-    ActivationObject ao;
-    void operator()(NetworkStruct& neural){
-			for(int i=1; i<neural.getNumberOfLayers(); i++){
-				for(int j=0; j<neural.getNumberOfUnits(i); j++){
-					neural.network[i][j].setStatus(ao.activate(sigma(neural.layerBackwordIterator(i,j),j) + neural.network[i][j].bias));
-				}
-			}
-		}
-		static double sigma(const std::vector<Unit_Dy>& input_layer,int unitid){
-			double sum=0;
-			for(auto& unit: input_layer){
-				sum += unit.getStatus() * unit.weight[unitid] + unit.bias;
-			}
-			return sum;
-		}
-};
         
         template<class NetworkStruct,class ActivationObject>
         bool _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::exportNetwork(std::string filename){
@@ -433,6 +395,169 @@ struct _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::calcSurface{
         bool _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::importNetwork(std::string filename){
             return neural.importNetwork(filename);
         }
+
+		/****************************************************/
+		/*				AMP network solver				*/
+		/****************************************************/
+
+		template<class NetworkStruct, class ActivationObject>
+		class _NNSolver<NetworkStruct, ActivationObject, AMP> {
+		public:
+			explicit _NNSolver(std::vector<typename NetworkStruct::size_t> number_of_uints);
+			explicit _NNSolver(typename NetworkStruct::origin_data& network);
+			using Unit_t = typename NetworkStruct::Unit_t;
+
+			NetworkStruct neural;
+			typedef typename concurrency::array_view<Unit_t> output_layer;
+			typedef typename std::vector<Unit_Dy> input_layer;
+			typedef std::vector< std::pair< std::vector<float>, std::vector<float> > > training_list_t;
+
+			void setNetworkStruct(std::vector<typename NetworkStruct::size_t> number_of_uints);
+
+			auto solveAnswer(const std::vector<float>&)
+				->const output_layer&;
+
+			template<template<class, class>class _TRAINING_OBJECT>
+			void training(float t_rate ,training_list_t& training_list);
+
+			template<class _TRAINING_OBJECT>
+			std::vector<float> regulateWeight(const std::vector<float>& input,
+				const std::vector<float>& target,
+				_TRAINING_OBJECT& _training_algorithm);
+
+			float calcError(training_list_t& training_list);
+
+			bool exportNetwork(std::string filename);
+			bool importNetwork(std::string filename);
+
+		private:
+		};
+
+		template<class NetworkStruct, class ActivationObject>
+		_NNSolver<NetworkStruct, ActivationObject, AMP>::_NNSolver(typename NetworkStruct::origin_data& network):neural(network,Range(ActivationObject::RANGE_MIN, ActivationObject::RANGE_MAX)){
+			
+			
+		}
+
+		template<class NetworkStruct, class ActivationObject>
+		auto _NNSolver<NetworkStruct, ActivationObject, AMP>::solveAnswer(const std::vector<float>& sensory)
+			->const output_layer&{
+
+			inputting(neural.network.front(),sensory);
+
+		NetworkStruct::Calc_Func<ActivationObject>()(neural);
+
+		return neural.network.back();
+		}
+
+		template<class NetworkStruct, class ActivationObject>
+		template<template<class, class>class _TRAINING_OBJECT>
+		void _NNSolver<NetworkStruct, ActivationObject, AMP>::training(float t_rate,training_list_t& training_list){
+			const std::size_t TRAINIG_LIMITS = 100;
+
+		_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object(t_rate);
+		double RMSerror = 0.0, best = 1e6;
+		typename NetworkStruct::origin_data best_network;
+#ifdef DEBUG_MTL
+		std::ofstream ofs("training_result.csv");
+#endif	
+
+		std::random_device rd;
+		std::mt19937 mt(rd());
+
+		RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+		best = RMSerror;
+		neural.copy_to(best_network);
+
+		std::cout << "Initial error value: " << RMSerror << std::endl;
+		ofs << 0 << "," << RMSerror << std::endl;
+		std::cout << "start training" << std::endl;
+		
+
+		for (int i = 1; i<=TRAINIG_LIMITS; i++) {
+			std::shuffle(training_list.begin(), training_list.end(),mt);
+			//for (auto& training_target : training_list) {
+			for (int j = 0; j < training_list.size(); j++) {
+				regulateWeight(training_list[j].first, training_list[j].second, training_object);
+			}
+			
+			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+#ifdef DEBUG_MTL
+			std::cout << i << ',' << RMSerror << std::endl;
+			ofs << i << "," << RMSerror << std::endl;
+#endif		
+			if (best > RMSerror) { 
+				best = RMSerror; 
+				neural.copy_to(best_network); 
+			}
+			RMSerror = 0.0;
+		
+		}
+		neural.copy_from(best_network);
+		for (auto& training_target : training_list) {
+			RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_t>, ActivationObject>(solveAnswer(training_target.first)),training_target.second);
+		}
+		std::cout << "training result: sum of train sample error = " <<  RMSerror << std::endl;
+		}
+
+		template<class NetworkStruct, class ActivationObject>
+		float _NNSolver<NetworkStruct, ActivationObject, AMP>::calcError(training_list_t& training_list) {
+			float RMSerror = 0;
+			for (int j = 0; j < training_list.size(); j++) {
+				RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_t>, ActivationObject>(solveAnswer(training_list[j].first)), training_list[j].second);
+			}
+
+			return RMSerror;
+		}
+
+
+		template<class NetworkStruct, class ActivationObject>
+		template<class _TRAINING_OBJECT>
+		std::vector<float> _NNSolver<NetworkStruct, ActivationObject, AMP>::regulateWeight(const std::vector<float>& input,
+			const std::vector<float>& target,
+			_TRAINING_OBJECT& _training_algorithm) {
+			inputting(neural.network.front(), input);
+			NetworkStruct::Calc_Func<ActivationObject>()(neural);
+
+			concurrency::array_view<const float> target_view(static_cast<int>(target.size()), reinterpret_cast<const float*>(&target[0]));
+			auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers() - 1], target_view);
+			for (int i = neural.getNumberOfLayers() - 2; i >= 0; i--) {
+				concurrency::array_view<const float> delta_view(static_cast<int>(delta.size()), reinterpret_cast<const float*>(&delta[0]));
+				delta = _training_algorithm(neural.network[i], target_view, delta_view);
+			}
+
+			return delta;
+		}
+
+
+		template<class NetworkStruct, class ActivationObject>
+		void _NNSolver<NetworkStruct, ActivationObject, AMP>::setNetworkStruct(std::vector<typename NetworkStruct::size_t> number_of_uints) {
+
+			neural.setNumberOfLayers(static_cast<typename NetworkStruct::size_t>(number_of_uints.size()));
+			for (typename NetworkStruct::size_t i = 0; i<number_of_uints.size(); i++) {
+				neural.setNumberOfUnits(i, number_of_uints[i]);
+			}
+
+			for (typename NetworkStruct::size_t i = 0; i<number_of_uints.size() - 1; i++) {
+				//todo autholize
+				for (typename NetworkStruct::size_t j = 0; j<number_of_uints[i]; j++) {
+					//neural.network[i][j].weight.resize(number_of_uints[i+1]);
+				}
+			}
+
+		}
+
+		
+
+		template<class NetworkStruct, class ActivationObject>
+		bool _NNSolver<NetworkStruct, ActivationObject, AMP>::exportNetwork(std::string filename) {
+			return neural.exportNetwork(filename);
+		}
+
+		template<class NetworkStruct, class ActivationObject>
+		bool _NNSolver<NetworkStruct, ActivationObject, AMP>::importNetwork(std::string filename) {
+			return neural.importNetwork(filename);
+		}
 
 LIB_SCOPE_END()
 

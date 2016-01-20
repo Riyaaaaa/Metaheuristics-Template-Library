@@ -33,17 +33,19 @@ void xor_nn_dy(){
     network_struct[0] = 2;
     network_struct[1] = 4;
     network_struct[2] = 1;
+
+	typedef mtl::tanh_af ActivationObject;
     
-    mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af > solver(0.05,network_struct);
+    mtl::NNSolver< mtl::FeedForward_Dy, ActivationObject > solver(network_struct);
     solver.setNetworkStruct(network_struct);
 
     std::vector< std::pair< std::vector<float>, std::vector<float> > > list;
-    list.push_back(std::make_pair( std::vector<float>{1,1}, std::vector<float>{-1} ));
-    list.push_back(std::make_pair( std::vector<float>{-1,1}, std::vector<float>{1} ));
-    list.push_back(std::make_pair( std::vector<float>{1,-1}, std::vector<float>{1} ));
-    list.push_back(std::make_pair( std::vector<float>{-1,-1}, std::vector<float>{-1} ));
+    list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MAX, ActivationObject::RANGE_MAX}, std::vector<float>{ActivationObject::RANGE_MIN} ));
+    list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MIN, ActivationObject::RANGE_MAX}, std::vector<float>{ActivationObject::RANGE_MAX} ));
+    list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MAX, ActivationObject::RANGE_MIN}, std::vector<float>{ActivationObject::RANGE_MAX} ));
+    list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MIN, ActivationObject::RANGE_MIN}, std::vector<float>{ActivationObject::RANGE_MIN} ));
     
-    solver.training<mtl::Backpropagation>(list);
+    solver.training<mtl::Backpropagation>(0.15,list);
     
     std::cout << "-------END--------" << std::endl;
     std::ofstream ofs("xor_result.csv");
@@ -51,7 +53,7 @@ void xor_nn_dy(){
     for(float x=-1.0; x<=1.0; x += 0.02){
         for(float y=-1.0; y<=1.0; y += 0.02){
             auto output = solver.solveAnswer( {x,y} );
-            ofs << x << "," << y << "," << output[0].output(mtl::tanh_af::activate) << std::endl;
+            ofs << x << "," << y << "," << output[0].output(ActivationObject::activate) << std::endl;
         }
     }
     std::cout << std::endl;
@@ -60,7 +62,7 @@ void xor_nn_dy(){
 }
 
 void import_network_and_plot(std::string filename){
-    mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af > solver(0.05);
+    mtl::NNSolver< mtl::FeedForward_Dy,mtl::tanh_af > solver;
     if(solver.importNetwork(filename)){
         
         std::ofstream ofs("xor_result.csv");
