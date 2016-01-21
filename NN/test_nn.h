@@ -36,21 +36,52 @@ void test_nn(){
 	//ocr_nn("../../NN/training_sample/ocr_train.csv");
 	//ocr_nn("ocr_test_scale_101.csv","ocr_network_testcase01.txt");
 	//ocr_test_trimmer(100);
-	//ocr_nn("ocr_train_scale_101.csv");
+	ocr_nn("ocr_train_scale_101.csv");
 	//ocr_calc_error("ocr_train_scale_101.csv", "ocr_network.txt");
 	//ocr_tester("ocr_test_scale_100.csv","ocr_network_0114_1110.txt");
 
 	/*std::vector<std::string> filenames;
 	for (int i = 0; i < 10; i++) {
-		filenames.push_back("../../NN/training_sample_image/micha_" + std::to_string(i) + ".png");
+		filenames.push_back("../../NN/training_sample_image/ono2_" + std::to_string(i) + ".png");
 	}
 
 	auto samples = import_csv_from_image(filenames);
 
-	export_csv("micachan.csv",samples);
-	ocr_tester("micachan.csv", "ocr_network_0114_1110.txt");*/
+	export_csv("ono.csv",samples,std::ios::app);*/
+	//ocr_tester("minst.csv", "ocr_network_0114_1110.txt");
 
-	mtl::FeedForward_Convolution<5>::struct_t network_struct;
+	/*auto sample = import_csv_for_test("ocr_test.csv",784);
+
+	std::vector< std::pair< std::vector<float>, std::vector<float> > > csv_data;
+	const int rows = 28, cols = 28;
+	cv::Mat charactor_img(rows, cols, CV_8UC1);
+	cv::Mat view;
+
+	for (int idx = 3; idx < sample.size(); idx+=500) {
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				charactor_img.at<unsigned char>(i, j) = (sample[idx][i*cols + j] + 1) * 128.f;
+			}
+		}
+		cv::resize(charactor_img, view, cv::Size(rows * 5, cols * 5));
+		cv::imshow("charactor", view);
+
+		int num;
+		std::cout << "enter answer" << std::endl;
+		cv::waitKey(-1);
+		cv::destroyWindow("charactor");
+
+		std::cin >> num;
+
+		std::vector<float> target(10);
+		std::fill(target.begin(), target.end(), -1);
+		target[num] = 1;
+
+		csv_data.push_back(std::make_pair(sample[idx], target));
+	}
+	export_csv("minst.csv", csv_data, std::ios::app);*/
+
+	/*mtl::FeedForward_Convolution<5>::struct_t network_struct;
 
 	network_struct.resize(2);
 
@@ -88,7 +119,7 @@ void test_nn(){
 		}
 		std::cout << std::endl;
 	}
-	std::cout << std::endl;
+	std::cout << std::endl;*/
 	return;
 }
 

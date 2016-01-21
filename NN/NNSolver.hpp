@@ -281,7 +281,7 @@ public:
 	template<class _TRAINING_OBJECT>
 	auto regulateWeight(const std::vector<float>& input,
 						const std::vector<float>& target,
-						cosst std::vector<float>& delta,
+						std::vector<float>& delta,
 					_TRAINING_OBJECT& _training_algorithm);
     
 	float calcError(training_list_t& training_list);
@@ -368,7 +368,7 @@ auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std
         inputting(neural.network.front(), input);
 		NetworkStruct::Calc_Func<ActivationObject>()(neural);
     
-    auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
+    std::vector<float> delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
 	return regulateWeight(input,target,delta,_training_algorithm);
 }
 
@@ -376,7 +376,7 @@ template<class NetworkStruct, class ActivationObject>
 template<class _TRAINING_OBJECT>
 auto _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::regulateWeight(const std::vector<float>& input,
 	const std::vector<float>& target,
-	cosst std::vector<float>& delta,
+	std::vector<float>& delta,
 	_TRAINING_OBJECT& _training_algorithm) {
 
 	for (int i = neural.getNumberOfLayers() - 2; i >= 0; i--) {
@@ -477,7 +477,7 @@ template<class NetworkStruct,class ActivationObject>
 		double RMSerror = 0.0, best = 1e6;
 		typename NetworkStruct::origin_data best_network;
 #ifdef DEBUG_MTL
-		std::ofstream ofs("training_result.csv");
+		std::ofstream ofs("training_result_speed_cpu.csv");
 #endif	
 
 		std::random_device rd;
@@ -491,18 +491,22 @@ template<class NetworkStruct,class ActivationObject>
 		ofs << 0 << "," << RMSerror << std::endl;
 		std::cout << "start training" << std::endl;
 		
-
 		for (int i = 1; i<=TRAINIG_LIMITS; i++) {
 			std::shuffle(training_list.begin(), training_list.end(),mt);
 			//for (auto& training_target : training_list) {
+			std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
 			for (int j = 0; j < training_list.size(); j++) {
 				regulateWeight(training_list[j].first, training_list[j].second, training_object);
 			}
-			
+			std::chrono::time_point<std::chrono::system_clock> after = std::chrono::system_clock::now();
+			std::chrono::duration<double> diff = after - now;
+			std::cout << i-1 << "," << diff.count() << std::endl;
+			ofs << i - 1 << "," << diff.count() << std::endl;
+
 			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
 #ifdef DEBUG_MTL
-			std::cout << i << ',' << RMSerror << std::endl;
-			ofs << i << "," << RMSerror << std::endl;
+			//std::cout << i << ',' << RMSerror << std::endl;
+			//ofs << i << "," << RMSerror << std::endl;
 #endif		
 			if (best > RMSerror) { 
 				best = RMSerror; 

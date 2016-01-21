@@ -72,12 +72,12 @@ std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv(st
 
 		for (int i = 0; i < OutputVectorSize; i++) {
 			getline(streambuffer, token, delimiter);
-			output[i] = std::stoi(token);
+			output[i] = std::stof(token);
 		}
 
 		for (int i = 0; i < InputVectorSize; i++) {
 			getline(streambuffer, token, delimiter);
-			input[i] = std::stoi(token);
+			input[i] = std::stof(token);
 		}
 		list.push_back(std::make_pair(input, output));
 	}
@@ -112,7 +112,7 @@ std::vector< std::vector<float> > import_csv_for_test(std::string filename, cons
 
 		for (int i = 0; getline(streambuffer, token, delimiter); i++) {
 
-			input[i] = std::stof(token);
+			input[i] = std::stof(token) / 128.f -1;
 		}
 
 		list.push_back(input);
@@ -154,16 +154,18 @@ std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_fr
 	return data;
 }
 
-bool export_csv(std::string csv_filename,std::vector< std::pair< std::vector<float>, std::vector<float> > > training_sample) {
-	std::ofstream ofs(csv_filename);
+bool export_csv(std::string csv_filename, std::vector< std::pair< std::vector<float>, std::vector<float> > > training_sample, const std::ios_base::openmode mode) {
+	std::ofstream ofs(csv_filename, mode);
 
-	ofs << "label" << ",";
-	for (int i = 0; i < training_sample[0].first.size(); i++) {
-		ofs << "pixel" + std::to_string(i);
-		if (i != training_sample[0].first.size() - 1)ofs << ",";
-	}
+	if (mode == std::ios::trunc) {
+		ofs << "label" << ",";
+		for (int i = 0; i < training_sample[0].first.size(); i++) {
+			ofs << "pixel" + std::to_string(i);
+			if (i != training_sample[0].first.size() - 1)ofs << ",";
+		}
 
 	ofs << std::endl;
+	}
 
 	for (int i = 0; i < training_sample.size(); i++) {
 		for (int j = 0; j < training_sample[i].second.size(); j++) {

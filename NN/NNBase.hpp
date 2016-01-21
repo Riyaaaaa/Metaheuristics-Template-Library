@@ -711,15 +711,26 @@ struct _calcSurface<NetworkStruct, ActivationObject,AMP> {
 			concurrency::array_view<Unit_t>& back_layer = neural.network[i - 1];
 			concurrency::extent<1> ex = layer.get_extent();
 			//gpu acceleration
-			parallel_for_each(ex, [=](concurrency::index<1> idx)restrict(amp) {
+			/*parallel_for_each(ex, [=](concurrency::index<1> idx)restrict(amp) {
 				layer[idx].setStatus(sigma(back_layer, idx[0]));
-			});
+			});*/
+
+			for (int idx = 0; idx < layer.get_extent()[0];idx++) {
+				layer[idx].setStatus(sigma(back_layer, idx));
+			}
 		}
 	}
 	static float sigma(const concurrency::array_view<const typename NetworkStruct::Unit_t>& input_layer, int unitid)restrict(amp) {
 		float sum = 0;
 		for (int i = 0; i < input_layer.get_extent()[0]; i++) {
 			sum += ActivationObject::activate_amp(input_layer[i].getStatus() + input_layer[i].bias) * input_layer[i].weight[unitid];
+		}
+		return sum;
+	}
+	static float sigma(const concurrency::array_view<const typename NetworkStruct::Unit_t>& input_layer, int unitid)restrict(cpu) {
+		float sum = 0;
+		for (int i = 0; i < input_layer.get_extent()[0]; i++) {
+			sum += ActivationObject::activate(input_layer[i].getStatus() + input_layer[i].bias) * input_layer[i].weight[unitid];
 		}
 		return sum;
 	}

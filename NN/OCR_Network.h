@@ -16,6 +16,7 @@
 #include<fstream>
 #include<sstream>
 #include<vector>
+#include<numeric>
 #include<utility>
 
 void ocr_nn_convolution(std::string filename) {
@@ -146,11 +147,22 @@ void ocr_test_trimmer(int scale) {
 }
 
 void ocr_tester(std::string csv_filename,std::string network_filename) {
+	std::vector<int> problem_num{ 0,0,0,0,0,0,0,0,0,0 }, correct_ans{ 0,0,0,0,0,0,0,0,0,0 };
+	std::vector< std::vector<int> > ans_mat(10);
+	for (auto&& v: ans_mat) {
+		v.resize(10);
+		std::fill(v.begin(), v.end(), 0);
+	}
+
+	float percent;
 	const int cols = 28, rows = 28;
-	std::vector< std::vector<float> > ocr_test = import_csv_for_test(csv_filename, cols*rows);
+	auto ocr_test = import_csv(csv_filename,784,10);
 
 	cv::Mat charactor_img(rows, cols, CV_8UC1);
 	cv::Mat view;
+
+	std::vector<float> percentages(10);
+	std::ofstream ofs("ocr_result_percentages_corrent.csv");
 
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	network_struct[0] = 784;
@@ -164,20 +176,53 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 	network.importNetwork(network_filename);
 
 	for (auto&& test : ocr_test) {
-		for (int i = 0; i < rows; i++) {
+		/*for (int i = 0; i < rows; i++) {
 			for (int j = 0; j < cols; j++) {
-				charactor_img.at<unsigned char>(i, j) = (test[i*cols + j] + 1) * 128;
+				charactor_img.at<unsigned char>(i, j) = (test.first[i*cols + j] + 1) * 128;
 			}
 		}
 		cv::resize(charactor_img, view, cv::Size(rows * 5, cols * 5));
-		cv::imshow("charactor", view);
+		cv::imshow("charactor", view);*/
 
-		std::cout << mtl::elite_principle<concurrency::array_view<mtl::Unit_Dy_Amp<784>>, mtl::tanh_af>(solver.solveAnswer(test)).idx << std::endl;
+		float result = mtl::elite_principle<concurrency::array_view<mtl::Unit_Dy_Amp<784>>, mtl::tanh_af>(solver.solveAnswer(test.first)).idx;
+		float ans = std::max_element(test.second.begin(), test.second.end()) - test.second.begin();
+		problem_num[ans]++;
+		std::cout << result;
 
-		cv::waitKey(-1);
-		cv::destroyWindow("charactor");
+		if (ans == result) {
+			correct_ans[ans]++;
+			std::cout << " correct!";
+		}
+		else std::cout << "wrong.";
+		std::cout << " percent: " << correct_ans[ans] / (float)problem_num[ans] * 100.f
+			<< "%" << std::endl;
+
+		percentages[ans] = correct_ans[ans] / (float)problem_num[ans] * 100.f;
+		ans_mat[ans][result]++;
+
+		/*cv::waitKey(-1);
+		cv::destroyWindow("charactor");*/
 	}
 
+	for (int i = 0; i < 10; i++) {
+		ofs << i << "," << percentages[i] << "," << problem_num[i] << "," << correct_ans[i] << std::endl;
+	}
+	ofs << std::endl;
+
+	for (int j = 0; j < 10; j++) ofs << "," << j;
+	ofs << std::endl;
+	for (int i = 0; i < 10; i++) {
+		ofs << i;
+		for (int j = 0; j < 10; j++) {
+			ofs << "," << ans_mat[i][j];
+		}
+		ofs << std::endl;
+	}
+
+	ofs << std::endl;
+	for (int i = 0; i < 10; i++) {
+		for (int j = 0; j < 10; j++) ofs << i << "," << j << "," << ans_mat[i][j] / std::accumulate(ans_mat[i].begin(),ans_mat[i].end(),0.0f) << std::endl;
+	}
 }
 
 #endif
