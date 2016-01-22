@@ -35,8 +35,8 @@ void test_nn(){
 	//ocr_train_trimmer(101);
 	//ocr_nn("../../NN/training_sample/ocr_train.csv");
 	//ocr_nn("ocr_test_scale_101.csv","ocr_network_testcase01.txt");
-	//ocr_test_trimmer(100);
-	//ocr_nn("ocr_train_scale_101.csv");
+	//ocr_test_trimmer(1);
+	ocr_nn("ocr_train_scale_101.csv");
 	//ocr_calc_error("ocr_train_scale_101.csv", "ocr_network.txt");
 	//ocr_tester("ocr_test_scale_100.csv","ocr_network_0114_1110.txt");
 
@@ -48,7 +48,7 @@ void test_nn(){
 	auto samples = import_csv_from_image(filenames);
 
 	export_csv("ono.csv",samples,std::ios::app);*/
-	ocr_tester("minst.csv", "ocr_network_0114_1110.txt");
+	//ocr_tester("minst.csv", "ocr_network_0114_1110.txt");
 
 	//auto samples = import_csv("minst.csv",784,10);
 	//outputFeature("ocr_network_0114_1110.txt", samples[0].first);

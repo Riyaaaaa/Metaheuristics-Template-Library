@@ -89,7 +89,7 @@ void ocr_nn(std::string csv_filename,std::string network_filename) {
 }
 
 void ocr_train_trimmer(int scale) {
-	auto training_sample = import_csv_from_density("../../NN/training_sample/ocr_train.csv",784,10);
+	auto training_sample = import_csv_from_density("../../NN/training_sample_csv/ocr_train.csv",784,10);
 	std::ofstream ofs("ocr_train_scale_" + std::to_string(scale) + ".csv");
 
 	ofs << "label" << ",";
