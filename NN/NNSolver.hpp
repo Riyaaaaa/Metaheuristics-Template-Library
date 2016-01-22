@@ -258,30 +258,26 @@ public:
     
     NetworkStruct neural;
 	using Unit_t = typename NetworkStruct::Unit_t;
-    typedef typename std::vector<Unit_t> output_layer;
+	using Status_t = typename Unit_t::Status_t;
+	typedef typename std::vector<Unit_t> output_layer;
     typedef typename std::vector<Unit_t> input_layer;
 	typedef std::vector< std::pair< std::vector<float>, std::vector<float> > > training_list_t;
-    
-    void setNumberOfUnitsOfLayers(std::vector<int> num_units);
-    void setNumberOfUnitsByLayerIndex(int num_nutis);
-    
+     
     void setNetworkStruct(std::vector<typename NetworkStruct::size_t> number_of_uints);
     
     auto solveAnswer(const std::vector< typename Unit_t::Status_t >&)
-    ->const output_layer;
+    ->const output_layer&;
     
     template<template<class,class>class _TRAINING_OBJECT>
 	void training(float t_rate, training_list_t& training_list);
     
     template<class _TRAINING_OBJECT>
-    auto regulateWeight(const std::vector<float>& input,
-                        const std::vector<float>& target,
+    auto regulateWeight( const std::vector<Status_t>& target,
                         _TRAINING_OBJECT& _training_algorithm);
 
 	template<class _TRAINING_OBJECT>
-	auto regulateWeight(const std::vector<float>& input,
-						const std::vector<float>& target,
-						std::vector<float>& delta,
+	auto regulateWeight(const std::vector<Status_t>& target,
+						const std::vector<Status_t>& delta,
 					_TRAINING_OBJECT& _training_algorithm);
     
 	float calcError(training_list_t& training_list);
@@ -299,7 +295,7 @@ _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::_NNSolver(const typename Netw
  
 	template<class NetworkStruct,class ActivationObject>
 auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::solveAnswer(const std::vector< typename Unit_t::Status_t >& sensory)
-	->const output_layer{
+	->const output_layer&{
 
 		inputting(neural.network.front(),sensory);
 
@@ -329,7 +325,8 @@ void _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::training(float t_rate, t
 		std::shuffle(training_list.begin(), training_list.end(), mt);
 		//for (auto& training_target : training_list) {
 		for (int j = 0; j < training_list.size(); j++) {
-			regulateWeight(training_list[j].first, training_list[j].second, training_object);
+			solveAnswer(training_list[j].first);
+			regulateWeight(training_list[j].second, training_object);
 		}
 
 		RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
@@ -362,27 +359,25 @@ float _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::calcError(training_li
 
 template<class NetworkStruct,class ActivationObject>
 template<class _TRAINING_OBJECT>
-auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std::vector<float>& input,
-		const std::vector<float>& target,
+auto _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(
+		const std::vector<Status_t>& target,
 		_TRAINING_OBJECT& _training_algorithm){
-        inputting(neural.network.front(), input);
-		NetworkStruct::Calc_Func<ActivationObject>()(neural);
-    
-    std::vector<float> delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
-	return regulateWeight(input,target,delta,_training_algorithm);
+    std::vector<Status_t> delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
+	return regulateWeight(target,delta,_training_algorithm);
 }
 
 template<class NetworkStruct, class ActivationObject>
 template<class _TRAINING_OBJECT>
-auto _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::regulateWeight(const std::vector<float>& input,
-	const std::vector<float>& target,
-	std::vector<float>& delta,
+auto _NNSolver<NetworkStruct, ActivationObject, DYNAMIC>::regulateWeight(
+	const std::vector<Status_t>& target,
+	const std::vector<Status_t>& delta,
 	_TRAINING_OBJECT& _training_algorithm) {
 
+	auto new_delta = delta;
 	for (int i = neural.getNumberOfLayers() - 2; i >= 0; i--) {
-		delta = _training_algorithm(neural.network[i], target, delta);
+		new_delta = _training_algorithm(neural.network[i], target, new_delta);
 	}
-	return delta;
+	return new_delta;
 }
         
         
@@ -439,9 +434,13 @@ template<class NetworkStruct,class ActivationObject>
 			void training(float t_rate ,training_list_t& training_list);
 
 			template<class _TRAINING_OBJECT>
-			std::vector<float> regulateWeight(const std::vector<float>& input,
-				const std::vector<float>& target,
-				_TRAINING_OBJECT& _training_algorithm);
+			std::vector<float> regulateWeight(	const std::vector<float>& target,
+												_TRAINING_OBJECT& _training_algorithm);
+
+			template<class _TRAINING_OBJECT>
+			std::vector<float> regulateWeight(	const std::vector<float>& target,
+												std::vector<float>& delta,
+												_TRAINING_OBJECT& _training_algorithm);
 
 			float calcError(training_list_t& training_list);
 
@@ -476,9 +475,10 @@ template<class NetworkStruct,class ActivationObject>
 		_TRAINING_OBJECT<NetworkStruct,ActivationObject> training_object(t_rate);
 		double RMSerror = 0.0, best = 1e6;
 		typename NetworkStruct::origin_data best_network;
-#ifdef DEBUG_MTL
-		std::ofstream ofs("training_result_speed_cpu.csv");
-#endif	
+#ifdef CLOCK_MTL
+		std::ofstream ofs_clock("training_result_speed_cpu.csv");
+#endif
+		std::ofstream ofs("training_result.csv");
 
 		std::random_device rd;
 		std::mt19937 mt(rd());
@@ -493,20 +493,27 @@ template<class NetworkStruct,class ActivationObject>
 		
 		for (int i = 1; i<=TRAINIG_LIMITS; i++) {
 			std::shuffle(training_list.begin(), training_list.end(),mt);
-			//for (auto& training_target : training_list) {
+
+#ifdef CLOCK_MTL
 			std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+#endif
+
 			for (int j = 0; j < training_list.size(); j++) {
-				regulateWeight(training_list[j].first, training_list[j].second, training_object);
+				solveAnswer(training_list[j].first);
+				regulateWeight(training_list[j].second, training_object);
 			}
+#ifdef CLOCK_MTL
 			std::chrono::time_point<std::chrono::system_clock> after = std::chrono::system_clock::now();
 			std::chrono::duration<double> diff = after - now;
 			std::cout << i-1 << "," << diff.count() << std::endl;
-			ofs << i - 1 << "," << diff.count() << std::endl;
+			ofs_clock << i - 1 << "," << diff.count() << std::endl;
+#endif
 
 			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+
 #ifdef DEBUG_MTL
-			//std::cout << i << ',' << RMSerror << std::endl;
-			//ofs << i << "," << RMSerror << std::endl;
+			std::cout << i << ',' << RMSerror << std::endl;
+			ofs << i << "," << RMSerror << std::endl;
 #endif		
 			if (best > RMSerror) { 
 				best = RMSerror; 
@@ -535,14 +542,24 @@ template<class NetworkStruct,class ActivationObject>
 
 		template<class NetworkStruct, class ActivationObject>
 		template<class _TRAINING_OBJECT>
-		std::vector<float> _NNSolver<NetworkStruct, ActivationObject, AMP>::regulateWeight(const std::vector<float>& input,
+		std::vector<float> _NNSolver<NetworkStruct, ActivationObject, AMP>::regulateWeight(
 			const std::vector<float>& target,
 			_TRAINING_OBJECT& _training_algorithm) {
-			inputting(neural.network.front(), input);
-			NetworkStruct::Calc_Func<ActivationObject>()(neural);
-
 			concurrency::array_view<const float> target_view(static_cast<int>(target.size()), reinterpret_cast<const float*>(&target[0]));
 			auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers() - 1], target_view);
+			
+			return regulateWeight(target, delta, _training_algorithm);
+		}
+
+		template<class NetworkStruct, class ActivationObject>
+		template<class _TRAINING_OBJECT>
+		std::vector<float> _NNSolver<NetworkStruct, ActivationObject, AMP>::regulateWeight(
+			const std::vector<float>& target,
+			std::vector<float>& delta,
+			_TRAINING_OBJECT& _training_algorithm) {
+
+			concurrency::array_view<const float> target_view(static_cast<int>(target.size()), reinterpret_cast<const float*>(&target[0]));
+
 			for (int i = neural.getNumberOfLayers() - 2; i >= 0; i--) {
 				concurrency::array_view<const float> delta_view(static_cast<int>(delta.size()), reinterpret_cast<const float*>(&delta[0]));
 				delta = _training_algorithm(neural.network[i], target_view, delta_view);
@@ -580,6 +597,103 @@ template<class NetworkStruct,class ActivationObject>
 		bool _NNSolver<NetworkStruct, ActivationObject, AMP>::importNetwork(std::string filename) {
 			return neural.importNetwork(filename);
 		}
+
+		template<class ActivationObject,class Perceptron,class Convolution, class Combinator>
+		class NNCompositeSolver {
+			Perceptron& perceptron;
+			Convolution& cnn;
+			typedef std::vector< std::pair< std::vector<typename Convolution::Unit_t::Status_t>, std::vector<typename Perceptron::Unit_t::Status_t> > > training_list_t;
+		public:
+			NNCompositeSolver(Perceptron& network1, Convolution& network2) :perceptron(network1), cnn(network2){}
+			typename Perceptron::output_layer solveAnswer( const std::vector< typename Convolution::Unit_t::Status_t >& input);
+			float calcError(training_list_t);
+
+			template<template<class, class>class _TRAINING_OBJECT1, template<class, class>class _TRAINING_OBJECT2>
+			void training(float t_rate, training_list_t& training_list);
+
+			template<class _TRAINING_OBJECT1, class _TRAINING_OBJECT2>
+			void regulateWeight(	const std::vector<typename Perceptron::Unit_t::Status_t>& target,
+												_TRAINING_OBJECT1 t_o_1,
+												_TRAINING_OBJECT2 t_o_2);
+												
+
+		};
+
+		template<class ActivationObject, class Perceptron, class Convolution, class Combinator>
+		typename Perceptron::output_layer  NNCompositeSolver<ActivationObject, Perceptron, Convolution, Combinator>::solveAnswer(const std::vector< typename Convolution::Unit_t::Status_t >& input) {
+			
+			const typename Convolution::output_layer& layer_1 = cnn.solveAnswer(input);
+			const typename Perceptron::output_layer& layer_2 = perceptron.solveAnswer( Combinator(layer_1) );
+
+			return layer_2;
+		}
+
+		template<class ActivationObject, class Perceptron, class Convolution, class Combinator>
+		template<template<class, class>class _TRAINING_OBJECT1, template<class, class>class _TRAINING_OBJECT2>
+		void  NNCompositeSolver<ActivationObject, Perceptron, Convolution, Combinator>::training(float t_rate, training_list_t& training_list) {
+			double RMSerror = 0.0;
+			const int TRAINING_LIMITS = 100;
+			_TRAINING_OBJECT1<decltype(perceptron.neural), ActivationObject> training_object1(t_rate);
+			_TRAINING_OBJECT2<decltype(cnn.neural), ActivationObject> training_object2(t_rate);
+
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+			std::ofstream ofs("training_result.csv");
+
+			std::cout << "Initial error value: " << RMSerror << std::endl;
+			ofs << 0 << "," << RMSerror << std::endl;
+			std::cout << "start training" << std::endl;
+
+
+			for (int i = 1; i <= TRAINING_LIMITS; i++) {
+				std::shuffle(training_list.begin(), training_list.end(), mt);
+				for (int j = 0; j < training_list.size(); j++) {
+					solveAnswer(training_list[j].first);
+					regulateWeight(training_list[j].second, training_object1, training_object2);
+				}
+
+				RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
+#ifdef DEBUG_MTL
+				std::cout << i << ',' << RMSerror << std::endl;
+				ofs << i << "," << RMSerror << std::endl;
+#endif		
+				RMSerror = 0.0;
+			}
+
+			for (auto& training_target : training_list) {
+				RMSerror += statusScanning(elite_principle<concurrency::array_view< typename Perceptron::Unit_t>, ActivationObject>(solveAnswer(training_target.first)), training_target.second);
+			}
+
+			std::cout << "training result: sum of train sample error = " << RMSerror << std::endl;
+		}
+		
+		template<class ActivationObject, class Perceptron, class Convolution, class Combinator>
+		template<class _TRAINING_OBJECT1, class _TRAINING_OBJECT2>
+		void  NNCompositeSolver<ActivationObject, Perceptron, Convolution, Combinator>::regulateWeight(
+			const std::vector<typename Perceptron::Unit_t::Status_t>& target,
+			_TRAINING_OBJECT1 t_o_1,
+			_TRAINING_OBJECT2 t_o_2) {
+
+			auto delta = perceptron.regulateWeight(target, t_o_1 );
+			cnn.regulateWeight(target, Combinator(delta), t_o_2 );
+
+		}
+		
+		template<class ActivationObject, class Perceptron, class Convolution, class Combinator>
+		float NNCompositeSolver<ActivationObject, Perceptron, Convolution, Combinator>::calcError(training_list_t training_list) {
+			float RMSerror = 0;
+
+			for (int j = 0; j < training_list.size(); j++) {
+				RMSerror += statusScanning(no_principle<typename Perceptron::output_layer, ActivationObject>(solveAnswer(training_list[j].first)), training_list[j].second);
+			}
+
+			return RMSerror;
+		}
+		
+			
+
+			
 
 LIB_SCOPE_END()
 

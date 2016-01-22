@@ -20,7 +20,7 @@
 #include<utility>
 
 void ocr_nn_convolution(std::string filename) {
-	auto trainig_sample = import_csv(filename, 784, 10);
+	auto training_sample = import_csv_with_channel(filename, 784, 10, 1);
 	mtl::FeedForward_Convolution<5>::struct_t network_struct_cnn;
 	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
 	mtl::FeedForward_Amp<784> network;
@@ -44,7 +44,11 @@ void ocr_nn_convolution(std::string filename) {
 
 	mtl::NNSolver< mtl::FeedForward_Convolution<2>, mtl::tanh_af_gpu_accel > solver_cnn(network_struct_cnn);
 	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver_perceptron(network);
+	auto Combinator = [](const auto& layer) { return mtl::Vector_Dimention_Downer<float>()( mtl::max_pooling(layer).pooling_layer ); };
 
+	//mtl::NNCompositeSolver< mtl::tanh_af_gpu_accel, decltype(solver_perceptron), decltype(solver_cnn), decltype(Combinator) > solver(solver_perceptron, solver_cnn);
+	
+	//solver.training< mtl::Backpropagation_Gpu_Accel, mtl::Backpropagation_Convolution >(0.0001, training_sample);
 
 }
 
@@ -158,7 +162,9 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 	const int cols = 28, rows = 28;
 	auto ocr_test = import_csv(csv_filename,784,10);
 
-	cv::Mat charactor_img(rows, cols, CV_8UC1);
+	cv::Mat all_image(rows * (ocr_test.size() / 10 + 1), cols * 10, CV_8UC1), charactor_img(rows, cols, CV_8UC1);
+	cv::Mat all_hide_image(rows * (ocr_test.size() / 10 + 1), cols * 10, CV_8UC1), charactor_hide_img(rows, cols, CV_8UC1);
+
 	cv::Mat view;
 
 	std::vector<float> percentages(10);
@@ -175,17 +181,20 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
 	network.importNetwork(network_filename);
 
+	int idx=0;
 	for (auto&& test : ocr_test) {
-		/*for (int i = 0; i < rows; i++) {
-			for (int j = 0; j < cols; j++) {
-				charactor_img.at<unsigned char>(i, j) = (test.first[i*cols + j] + 1) * 128;
-			}
-		}
-		cv::resize(charactor_img, view, cv::Size(rows * 5, cols * 5));
-		cv::imshow("charactor", view);*/
-
 		float result = mtl::elite_principle<concurrency::array_view<mtl::Unit_Dy_Amp<784>>, mtl::tanh_af>(solver.solveAnswer(test.first)).idx;
 		float ans = std::max_element(test.second.begin(), test.second.end()) - test.second.begin();
+
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				charactor_img.at<unsigned char>(i, j) = (test.first[i*cols + j] + 1) * 128;
+				charactor_hide_img.at<unsigned char>(i, j) = (solver.neural.network[1][i*cols + j].output(mtl::tanh_af::activate) + 1) * 128;
+			}
+		}
+		charactor_img.copyTo(all_image(cv::Rect(idx % 10 * 28, idx / 10 * 28, 28, 28)));
+		charactor_hide_img.copyTo(all_hide_image(cv::Rect(idx % 10 * 28, idx / 10 * 28, 28, 28)));
+
 		problem_num[ans]++;
 		std::cout << result;
 
@@ -202,7 +211,20 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 
 		/*cv::waitKey(-1);
 		cv::destroyWindow("charactor");*/
+
+		std::cout << idx << std::endl;;
+		idx++;
 	}
+
+	cv::imshow("all_image",all_image);
+	cv::imshow("all_hidden_image", all_hide_image);
+
+	cv::waitKey(-1);
+
+	cv::imwrite("all_image.png", all_image);
+	cv::imwrite("all_hidden_image.png", all_hide_image);
+
+	cv::destroyAllWindows();
 
 	for (int i = 0; i < 10; i++) {
 		ofs << i << "," << percentages[i] << "," << problem_num[i] << "," << correct_ans[i] << std::endl;
@@ -225,4 +247,55 @@ void ocr_tester(std::string csv_filename,std::string network_filename) {
 	}
 }
 
+void outputFeature(std::string network_filename, std::vector<float> input) {
+	const int rows = 28, cols = 28;
+
+	cv::Mat all_hide_image(rows, cols * 10, CV_8UC1),img(rows, cols, CV_8UC1);
+	std::vector<cv::Mat> charactor_hide_imgs;
+
+	for (int i = 0; i < 11; i++) {
+		charactor_hide_imgs.push_back(cv::Mat(rows, cols, CV_8UC1));
+	}
+
+	std::vector<mtl::FeedForward_Dy::size_t> network_struct(3);
+	network_struct[0] = 784;
+	network_struct[1] = 784;
+	network_struct[2] = 10;
+
+	mtl::FeedForward_Amp<784> network;
+	network.setStruct(network_struct);
+
+	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver(network);
+	network.importNetwork(network_filename);
+
+	solver.solveAnswer(input);
+
+	for (int i = 0; i < rows; i++) 
+		for (int j = 0; j < cols; j++) {
+			img.at<unsigned char>(i, j) = (input[i*cols + j] + 1) * 128;
+			charactor_hide_imgs[10].at<unsigned char>(i, j) = (solver.neural.network[1][i*cols + j].output(mtl::tanh_af::activate) + 1) * 128;
+		}
+
+	for (int idx = 0; idx < 10; idx++) {
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				charactor_hide_imgs[idx].at<unsigned char>(i, j) = (solver.neural.network[1][i*cols + j].output(mtl::tanh_af::activate) * solver.neural.network[1][i*cols + j].weight[idx] + 1) * 128;
+			}
+		}
+		charactor_hide_imgs[idx].copyTo(all_hide_image(cv::Rect(idx % 10 * 28, idx / 10 * 28, 28, 28)));
+		cv::imwrite("hidden_img" + std::to_string(idx) + ".png", charactor_hide_imgs[idx]);
+	}
+
+	cv::imshow("image", img);
+	cv::imshow("hidden_image_0_9", all_hide_image);
+
+	cv::waitKey(-1);
+
+	cv::imwrite("image.png", img);
+	cv::imwrite("hidden_image_0_9.png", all_hide_image);
+
+	cv::imwrite("hidden_image.png", charactor_hide_imgs[10]);
+
+	cv::destroyAllWindows();
+}
 #endif

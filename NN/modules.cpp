@@ -85,6 +85,50 @@ std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv(st
 	return list;
 }
 
+std::vector< std::pair< std::vector < std::vector<float> >, std::vector<float> > > import_csv_with_channel(std::string filename, const std::size_t InputVectorSize, const std::size_t OutputVectorSize, const int Channels) {
+	std::ifstream filestream(filename);
+	std::vector< std::pair< std::vector < std::vector<float> >, std::vector<float> > > list;
+	std::vector<std::vector<std::string>> table;
+	const char delimiter = ',';
+	std::string str;
+
+	if (!filestream.is_open())
+	{
+		return list;
+	}
+
+	getline(filestream, str);
+
+	while (!filestream.eof())
+	{
+		std::string buffer;
+		getline(filestream, buffer);
+
+		std::istringstream streambuffer(buffer);
+		std::string token;
+		std::vector<std::vector<float>> input(Channels, std::vector<float>(InputVectorSize));
+		std::vector<float> output(OutputVectorSize);
+
+		if (buffer.empty())break;
+
+		std::fill(output.begin(), output.end(), -1.f);
+
+		for (int i = 0; i < OutputVectorSize; i++) {
+			getline(streambuffer, token, delimiter);
+			output[i] = std::stof(token);
+		}
+		for (int c = 0; c < Channels; c++) {
+			for (int i = 0; i < InputVectorSize; i++) {
+				getline(streambuffer, token, delimiter);
+				input[c][i] = std::stof(token);
+			}
+		}
+		list.push_back(std::make_pair(input, output));
+	}
+
+	return list;
+}
+
 std::vector< std::vector<float> > import_csv_for_test(std::string filename, const std::size_t InputVectorSize) {
 	std::ifstream filestream(filename);
 	std::vector< std::vector<float> > list;

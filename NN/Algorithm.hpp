@@ -108,6 +108,32 @@ struct max_pooling {
 	}
 };
 
+template<typename Element>
+struct Vector_Dimention_Downer {
+	std::vector<Element> operator()( const std::vector< std::vector<Element> >& vec2) {
+		std::vector< Element > vec1;
+
+		for (auto&& v: vec2) {
+			std::copy(v.begin(), v.end(), std::back_inserter(vec1) );
+		}
+
+		return vec1;
+	}
+};
+
+template<class Unit_t>
+struct Map_to_Vector {
+	std::vector< typename Unit_t::Status_t > operator()( std::vector< Unit_t > layer) {
+		std::vector< typename Unit_t::Status_t > vec1;
+
+		for (auto&& v : layer) {
+			std::copy(v.map.begin(), v.map.end(), std::back_inserter(vec1));
+		}
+
+		return vec1;
+	}
+};
+
 template<class Layer, typename ActivationObject, bool isStdContainer>
 struct _elite_principle;
 
@@ -378,7 +404,7 @@ struct Backpropagation_Gpu_Accel{
 		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
 
 		//gpu acceleration
-		/*parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
 				input_layer[idx].weight[i] += trate * delta[i] * ao.activate_amp(out);
@@ -388,10 +414,10 @@ struct Backpropagation_Gpu_Accel{
 			}
 			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		});*/
+		});
 
 
-		for (int idx = 0; idx < input_layer.get_extent()[0];idx++) {
+		/*for (int idx = 0; idx < input_layer.get_extent()[0];idx++) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
 				input_layer[idx].weight[i] += trate * delta[i] * ao.activate(out);
@@ -401,7 +427,7 @@ struct Backpropagation_Gpu_Accel{
 			}
 			new_delta_view[idx] = ao.activateDerivative(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		}
+		}*/
 		new_delta_view.synchronize();
 		return new_delta;
 	}
@@ -409,7 +435,7 @@ struct Backpropagation_Gpu_Accel{
 
 template<class Net_t, class ActivationObject>
 struct Backpropagation_Convolution {
-	typedef std::vector< typename Net_t::Status_t > output_layer_t;
+	typedef std::vector< typename Net_t::Unit_t::Status_t > output_layer_t;
 	Backpropagation_Convolution(const float t_rate) :_trate(t_rate) {}
 
 	const float _trate;
@@ -431,7 +457,7 @@ struct Backpropagation_Convolution {
 		return delta;
 	}
 
-	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< typename Net_t::Status_t >& delta) {
+	std::vector<float> operator()(std::vector<typename Net_t::Unit_t>& input_layer, const output_layer_t& target, const std::vector< typename Net_t::Unit_t::Status_t >& delta) {
 		ActivationObject ao;
 		float trate = _trate;
 

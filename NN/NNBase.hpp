@@ -110,6 +110,7 @@ template<std::size_t WEIGHT_SIZE>
 class Unit_Dy_Amp{
 	friend FeedForward_Amp<WEIGHT_SIZE>;
 public:
+	typedef float Status_t;
 	static constexpr int W_SIZE = WEIGHT_SIZE;
 	float bias = 0.5;
 	float weight[W_SIZE];
@@ -711,13 +712,13 @@ struct _calcSurface<NetworkStruct, ActivationObject,AMP> {
 			concurrency::array_view<Unit_t>& back_layer = neural.network[i - 1];
 			concurrency::extent<1> ex = layer.get_extent();
 			//gpu acceleration
-			/*parallel_for_each(ex, [=](concurrency::index<1> idx)restrict(amp) {
+			parallel_for_each(ex, [=](concurrency::index<1> idx)restrict(amp) {
 				layer[idx].setStatus(sigma(back_layer, idx[0]));
-			});*/
+			});
 
-			for (int idx = 0; idx < layer.get_extent()[0];idx++) {
+			/*for (int idx = 0; idx < layer.get_extent()[0];idx++) {
 				layer[idx].setStatus(sigma(back_layer, idx));
-			}
+			}*/
 		}
 	}
 	static float sigma(const concurrency::array_view<const typename NetworkStruct::Unit_t>& input_layer, int unitid)restrict(amp) {

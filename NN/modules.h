@@ -68,4 +68,5 @@ std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_fr
 std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv(std::string filename, const std::size_t InputVectorSize, const std::size_t OutputVectorSize);
 std::vector< std::vector<float> > import_csv_for_test(std::string filename, const std::size_t InputVectorSize);
 std::vector< std::pair< std::vector<float>, std::vector<float> > > import_csv_from_image(std::vector<std::string>);
+std::vector< std::pair< std::vector < std::vector<float> >, std::vector<float> > > import_csv_with_channel(std::string filename, const std::size_t InputVectorSize, const std::size_t OutputVectorSize, const int Channels);
 bool export_csv(std::string,std::vector< std::pair< std::vector<float>, std::vector<float> > >,const std::ios::openmode mode = std::ios::trunc);
