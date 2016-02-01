@@ -13,5 +13,6 @@
 #define LIB_SCOPE_END()   }
 #define DEBUG_MTL
 #define STATIC_NETWORK
+#define CLOCK_MTL
 
 #endif

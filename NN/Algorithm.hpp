@@ -416,7 +416,7 @@ struct Backpropagation_Gpu_Accel{
 		concurrency::array_view<float> new_delta_view(new_delta.size(), reinterpret_cast<float*>(&new_delta[0]));
 
 		//gpu acceleration
-		parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
+		/*parallel_for_each(input_layer.get_extent(), [=](concurrency::index<1> idx)restrict(amp) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
 				input_layer[idx].weight[i] += trate * delta[i] * ao.activate_amp(out);
@@ -426,10 +426,10 @@ struct Backpropagation_Gpu_Accel{
 			}
 			new_delta_view[idx] = ao.activateDerivative_amp(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		});
+		});*/
 
 
-		/*for (int idx = 0; idx < input_layer.get_extent()[0];idx++) {
+		for (int idx = 0; idx < input_layer.get_extent()[0];idx++) {
 			float out = input_layer[idx].getStatus() + input_layer[idx].bias, propagation = 0;
 			for (int i = 0; i < delta.get_extent()[0]; i++) {
 				input_layer[idx].weight[i] += trate * delta[i] * ao.activate(out);
@@ -439,7 +439,7 @@ struct Backpropagation_Gpu_Accel{
 			}
 			new_delta_view[idx] = ao.activateDerivative(out) * propagation;
 			input_layer[idx].bias += trate * new_delta_view[idx];
-		}*/
+		}
 		new_delta_view.synchronize();
 		return new_delta;
 	}

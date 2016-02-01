@@ -488,7 +488,7 @@ template<class NetworkStruct,class ActivationObject>
 		neural.copy_to(best_network);
 
 		std::cout << "Initial error value: " << RMSerror << std::endl;
-		ofs << 0 << "," << RMSerror << std::endl;
+		//ofs << 0 << "," << RMSerror << std::endl;
 		std::cout << "start training" << std::endl;
 		
 		for (int i = 1; i<=TRAINIG_LIMITS; i++) {
@@ -502,12 +502,6 @@ template<class NetworkStruct,class ActivationObject>
 				solveAnswer(training_list[j].first);
 				regulateWeight(training_list[j].second, training_object);
 			}
-#ifdef CLOCK_MTL
-			std::chrono::time_point<std::chrono::system_clock> after = std::chrono::system_clock::now();
-			std::chrono::duration<double> diff = after - now;
-			std::cout << i-1 << "," << diff.count() << std::endl;
-			ofs_clock << i - 1 << "," << diff.count() << std::endl;
-#endif
 
 			RMSerror = calcError(training_list) / static_cast<float>(training_list.size());
 
@@ -517,12 +511,18 @@ template<class NetworkStruct,class ActivationObject>
 #endif		
 			if (best > RMSerror) { 
 				best = RMSerror; 
-				neural.copy_to(best_network); 
+				//neural.copy_to(best_network); 
 			}
 			RMSerror = 0.0;
 		
+#ifdef CLOCK_MTL
+			std::chrono::time_point<std::chrono::system_clock> after = std::chrono::system_clock::now();
+			std::chrono::duration<double> diff = after - now;
+			std::cout << i - 1 << "," << diff.count() << std::endl;
+			ofs_clock << i - 1 << "," << diff.count() << std::endl;
+#endif
 		}
-		neural.copy_from(best_network);
+		//neural.copy_from(best_network);
 		for (auto& training_target : training_list) {
 			RMSerror += statusScanning(elite_principle<concurrency::array_view<Unit_t>, ActivationObject>(solveAnswer(training_target.first)),training_target.second);
 		}
