@@ -622,8 +622,8 @@ template<class NetworkStruct,class ActivationObject>
 		template<class ActivationObject, class Perceptron, class Convolution, class Combinator>
 		typename Perceptron::output_layer  NNCompositeSolver<ActivationObject, Perceptron, Convolution, Combinator>::solveAnswer(const std::vector< typename Convolution::Unit_t::Status_t >& input) {
 			
-			const typename Convolution::output_layer& layer_1 = cnn.solveAnswer(input);
-			const typename Perceptron::output_layer& layer_2 = perceptron.solveAnswer( Combinator(layer_1) );
+			const typename Convolution::output_layer&	layer_1 = cnn.solveAnswer(input);
+			const typename Perceptron::output_layer&	layer_2 = perceptron.solveAnswer( Combinator(layer_1) );
 
 			return layer_2;
 		}
@@ -676,7 +676,7 @@ template<class NetworkStruct,class ActivationObject>
 			_TRAINING_OBJECT2 t_o_2) {
 
 			auto delta = perceptron.regulateWeight(target, t_o_1 );
-			cnn.regulateWeight(target, Combinator(delta), t_o_2 );
+			cnn.regulateWeight(target, Combinator()(delta), t_o_2 );
 
 		}
 		

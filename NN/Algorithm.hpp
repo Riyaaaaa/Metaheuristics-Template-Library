@@ -121,16 +121,28 @@ struct Vector_Dimention_Downer {
 	}
 };
 
-template<class Unit_t>
-struct Map_to_Vector {
-	std::vector< typename Unit_t::Status_t > operator()( std::vector< Unit_t > layer) {
-		std::vector< typename Unit_t::Status_t > vec1;
+template<class Backward_Element, class Forward_Element>
+struct Combinator_Map_between_Vector {
+	std::vector< Forward_Element > Forward( std::vector< Backward_Element >& layer) {
+		std::vector< Forward_Element > vec1;
 
 		for (auto&& v : layer) {
 			std::copy(v.map.begin(), v.map.end(), std::back_inserter(vec1));
 		}
 
-		return vec1;
+		return std::move(vec1);
+	}
+
+	std::vector< Backward_Element > Backward( std::vector< Forward_Element >& layer, int map_size) {
+		std::vector< Backward_Element > vec2;
+
+		for (int i = 0; i < (layer.size() / (map_size*map_size)); i++) {
+			std::vector< typename Forward_Element::Status_t > map;
+			std::copy(layer.begin() + i*map_size*map_size, layer.begin() + (i+1)*map_size*map_size, std::back_inserter(map));
+			vec2.push_back(map);
+		}
+
+		return std::move(vec2);
 	}
 };
 

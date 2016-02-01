@@ -48,7 +48,7 @@ void test_nn(){
 	auto samples = import_csv_from_image(filenames);
 
 	export_csv("ono.csv",samples,std::ios::app);*/
-	ocr_tester("minst.csv", "ocr_network_0114_1110.txt");
+	//ocr_tester("minst.csv", "ocr_network_0114_1110.txt");
 
 	//auto samples = import_csv("minst.csv",784,10);
 	//outputFeature("ocr_network_0114_1110.txt", samples[0].first);

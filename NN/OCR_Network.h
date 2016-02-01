@@ -44,11 +44,12 @@ void ocr_nn_convolution(std::string filename) {
 
 	mtl::NNSolver< mtl::FeedForward_Convolution<2>, mtl::tanh_af_gpu_accel > solver_cnn(network_struct_cnn);
 	mtl::NNSolver< mtl::FeedForward_Amp_View<784>, mtl::tanh_af_gpu_accel > solver_perceptron(network);
-	auto Combinator = [](const auto& layer) { return mtl::Vector_Dimention_Downer<float>()( mtl::max_pooling(layer).pooling_layer ); };
+	auto Combinator = [](const auto& layer) { return mtl::Vector_Dimention_Downer<float>()( mtl::max_pooling< std::remove_reference_t<decltype(layer)>, 2>(layer).pooling_layer ); };
 
-	//mtl::NNCompositeSolver< mtl::tanh_af_gpu_accel, decltype(solver_perceptron), decltype(solver_cnn), decltype(Combinator) > solver(solver_perceptron, solver_cnn);
+	mtl::NNCompositeSolver< mtl::tanh_af_gpu_accel, decltype(solver_perceptron), decltype(solver_cnn), 
+		mtl::Combinator_Map_between_Vector<mtl::FeedForward_Convolution<2>::Unit_t, mtl::FeedForward_Amp_View<784>::Unit_t> > solver(solver_perceptron, solver_cnn);
 	
-	//solver.training< mtl::Backpropagation_Gpu_Accel, mtl::Backpropagation_Convolution >(0.0001, training_sample);
+	solver.training< mtl::Backpropagation_Gpu_Accel, mtl::Backpropagation_Convolution >(0.0001, training_sample);
 
 }
 
