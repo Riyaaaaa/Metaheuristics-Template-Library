@@ -37,6 +37,11 @@ OpenCV 2.49 (TSP of GA/SA sample)
 ## Licence
 [MIT](https://github.com/Riyaaaaa/Metaheuristic-Template-Library/blob/master/LICENSE)  
 
+## Link
+### My thesis
+[Development of OCR system by Gpu-Accelerated Deep-Learning](http://202.231.11.56/~ATSUMU/docs/study.pdf)  
+Original(ja): GPUによって加速化されたディープラーニングによる光学文字認識システムの開発  
+
 ## Author
  りやさん(@Riyaaaa_a)
  
