@@ -12,7 +12,7 @@
 #include<numeric>
 #include"Utility.hpp"
 #include"NNBase.hpp"
-#include"../configuration.h"
+#include"../Common/configuration.h"
 
 LIB_SCOPE_BEGIN()
 
@@ -38,13 +38,6 @@ struct sigmoid_af : ActivationFunc<sigmoid_af>{
 	static constexpr float RANGE_MAX = 1;
 };
 
-struct sigmoid_af_gpu_accel : ActivationFunc<sigmoid_af> {
-	static float activate(float input)restrict(cpu,amp) { return 1 / (1. + concurrency::fast_math::exp(-input)); }
-	static float activateDerivative(float input)restrict(cpu,amp) { return input * (1 - input); }
-	static constexpr float RANGE_MIN = 0;
-	static constexpr float RANGE_MAX = 1;
-};
-
 struct tanh_af : ActivationFunc<mtl::tanh_af>{
     static double activate(double input){ return tanh(input);}
     static double activateDerivative(double input){ return 1 - std::pow(tanh(input),2);}
@@ -52,15 +45,26 @@ struct tanh_af : ActivationFunc<mtl::tanh_af>{
 	static constexpr float RANGE_MAX = 1;
 };
 
-struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
-	static float activate_amp(float input)restrict(amp) { return concurrency::fast_math::fabs(input)>50 ? concurrency::precise_math::copysignf(1, input) : concurrency::fast_math::tanh(input);
-	}
-	static float activateDerivative_amp(float input)restrict(amp) { return 1 - activate_amp(input) * activate_amp(input); }
-	static float activate(float input) restrict(cpu){ return tanhf(input); }
-	static float activateDerivative(float input) restrict(cpu) { return 1 - std::pow(tanhf(input), 2); }
-	static constexpr float RANGE_MIN = -1;
-	static constexpr float RANGE_MAX = 1;
+#ifdef GPU_ACCELERATION
+
+struct sigmoid_af_gpu_accel : ActivationFunc<sigmoid_af> {
+    static float activate(float input)restrict(cpu,amp) { return 1 / (1. + concurrency::fast_math::exp(-input)); }
+    static float activateDerivative(float input)restrict(cpu,amp) { return input * (1 - input); }
+    static constexpr float RANGE_MIN = 0;
+    static constexpr float RANGE_MAX = 1;
 };
+
+struct tanh_af_gpu_accel : ActivationFunc<mtl::tanh_af> {
+    static float activate_amp(float input)restrict(amp) { return concurrency::fast_math::fabs(input)>50 ? concurrency::precise_math::copysignf(1, input) : concurrency::fast_math::tanh(input);
+        }
+        static float activateDerivative_amp(float input)restrict(amp) { return 1 - activate_amp(input) * activate_amp(input); }
+        static float activate(float input) restrict(cpu){ return tanhf(input); }
+        static float activateDerivative(float input) restrict(cpu) { return 1 - std::pow(tanhf(input), 2); }
+        static constexpr float RANGE_MIN = -1;
+        static constexpr float RANGE_MAX = 1;
+    };
+
+#endif
 
 template<class Layer, typename ActivationObject>
 struct no_principle {
@@ -126,7 +130,8 @@ struct _ErrorCorrection<Tuple,ActivationObject,STATIC>{
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     typedef ActivationObject actiavation_type;
     
-    const double _trate = 0.15;
+    _ErrorCorrection(double trate) : _trate(trate){}
+    const double _trate;
     actiavation_type ao;
     
     template<std::size_t Size1,std::size_t Size2>
@@ -160,7 +165,8 @@ struct _ErrorCorrection<Tuple,ActivationObject,DYNAMIC>{
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     typedef ActivationObject actiavation_type;
     
-    const double _trate = 0.15;
+    _ErrorCorrection(double trate) : _trate(trate){}
+    const double _trate;
     actiavation_type ao;
     
     template<std::size_t Size1,std::size_t Size2>
@@ -213,7 +219,8 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
     typedef std::remove_reference_t<Tuple> Tuple_t;
     typedef std::array<double,std::tuple_size<typename std::tuple_element<std::tuple_size<Tuple_t>::value-1,Tuple_t>::type >::value> output_layer_t;
     
-    const double _trate = 0.15;
+    _Backpropagation(double trate) : _trate(trate){}
+    const double _trate;
     ActivationObject ao;
     
     template<std::size_t Size1,std::size_t Size2>
@@ -236,20 +243,20 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
 
         std::array<double,Size1> new_delta;
         
-        for(auto& unit: input_layer){
-            for(int i=0; i<Size2; i++){
-                unit.weight[i] += _trate * delta[i] * unit.getStatus();
+        for(int j=0; j<input_layer.size(); j++){
+            double out, propagation = 0;
+            
+            for (int i = 0; i<delta.size(); i++) {
+                input_layer[j].weight[i] += _trate * delta[i] * input_layer[j].getStatus();
             }
-        }
-        
-        for(int j=0; j<Size1; j++){
-			double out, propagation = 0;
-            for(int i=0; i<Size2; i++){
+            
+            for(int i=0; i<delta.size(); i++){
                 propagation += input_layer[j].weight[i] * delta[i];
             }
             out = input_layer[j].getStatus();
             new_delta[j] = ao.activateDerivative(out) * propagation;
             input_layer[j].bias += _trate * new_delta[j];
+            
         }
         
         return new_delta;
@@ -259,8 +266,8 @@ struct _Backpropagation<Tuple,ActivationObject,STATIC,true>{
 template<class Tuple,class ActivationObject>
 struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
     typedef std::vector<float> output_layer_t;
-	_Backpropagation(const float t_rate) :_trate(t_rate) {}
     
+	_Backpropagation(const float t_rate) :_trate(t_rate) {}
     const double _trate;
     ActivationObject ao;
     
@@ -281,12 +288,6 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
     std::vector<double> operator()(std::vector<Unit_Dy>& input_layer,const output_layer_t& target, const std::vector<double>& delta){
         
         std::vector<double> new_delta(input_layer.size());
-        
-        /*for(auto& unit: input_layer){
-            for(int i=0; i<delta.size(); i++){
-                unit.weight[i] += _trate * delta[i] * unit.getStatus();
-            }
-        }*/
         
         for(int j=0; j<input_layer.size(); j++){
 			double out, propagation = 0;
@@ -311,6 +312,9 @@ struct _Backpropagation<Tuple,ActivationObject,DYNAMIC,true>{
 /* Network does not have three or more layers */
 template<class Tuple,class ActivationObject,class Tag>
 struct _Backpropagation<Tuple,ActivationObject,Tag,false>;
+    
+    
+#ifdef GPU_ACCELERATION
 
 template<class Net_t, class ActivationObject>
 struct Backpropagation_Gpu_Accel{
@@ -409,6 +413,8 @@ struct Backpropagation_Convolution {
 	}
 };
 
+#endif
+    
 LIB_SCOPE_END()
     
 #endif

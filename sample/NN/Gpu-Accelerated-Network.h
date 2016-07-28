@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef GPU_ACCELERATION
+
 #include"NNSolver.hpp"
 #include"modules.h"
 #include<fstream>
@@ -69,3 +71,5 @@ void xor_nn_amp_fileio(std::string csv_filename) {
 
 	std::cout << "-------END--------" << std::endl;
 }
+
+#endif
