@@ -34,6 +34,47 @@ OpenCV 2.49 (TSP of GA/SA sample)
  
  compile option: `-std=c++1y`
  
+## Usage
+
+### NeuralNetwork
+
+ ```cpp
+#include"NNSolver.hpp"
+#include<fstream>
+#include<vector>
+#include<utility>
+
+int main() {
+/* Neural Network Learning Solver(NNSolver) require template arguments            */
+/* First template arg: network structure                  */
+/* Second template arg: activation function            */
+
+/* sample: static network                              */
+/* mtl::FeedForward construct multilayer perceptron network as statically       */
+/* mtl::FeedForward require variadic template arguments */
+/* variadic template arguments :  number of units on each layer. order: input-output-hide(multi) */
+/* below sample construct 2 unit input layers / 1 unit output layers */
+  mtl::NNSolver< mtl::FeedForward<2, 1>, mtl::tanh_af > solver(0.05);
+ 
+ /* training samples */
+ /* pair.first : input, pair.second : output */
+  std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
+  list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{1} ));
+  list.push_back(std::make_pair( std::array<double,2>{1,-1}, std::array<double,1>{-1} ));
+  list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{-1} ));
+  list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
+  
+  /* Exec learning */
+  /* training function require learning algorithm */
+  solver.training<mtl::Backpropagation>(list);
+  
+  /* if training succeeded, solveAnswer function returns correctly value...  */
+  auto ans = solver.solveAnswer({0, 0});
+  
+  return 0;
+}
+ ```
+ 
 ## Licence
 [MIT](https://github.com/Riyaaaaa/Metaheuristic-Template-Library/blob/master/LICENSE)  
 
