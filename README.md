@@ -4,7 +4,7 @@
 # Metaheuristics-Template-Library
 Metaheuristics Template Library(MTL) is supported Genetic Algorithm, Simulated Annealing and Neural Network. 
 
-Attenstion: It is under development.
+Attention: It is under development.
 
 ##Overview
 MTL is a header-only library for the meta-heuristics programming.
