@@ -71,6 +71,25 @@ int main() {
   /* if training succeeded, solveAnswer function returns correctly value...  */
   auto ans = solver.solveAnswer({0, 0});
   
+  /* dynamic network version */
+  std::vector<mtl::FeedForward_Dy::size_t> network_struct = {2, 4, 1}; // input: 2 hide: 4 output: 1
+  mtl::NNSolver< mtl::FeedForward_Dy, mtl::tanh_af > solver(network_struct);
+  ...
+  solver.training<mtl::Backpropagation>(0.15, list);
+  
+  /* gpu-accelerated version */
+ std::vector<mtl::FeedForward_Dy::size_t> network_struct = {2, 4, 1};
+ mtl::FeedForward_Amp<4> network; //template argument require max unit size
+	network.setStruct(network_struct);
+
+	mtl::NNSolver< mtl::FeedForward_Amp_View<4>, mtl::tanh_af_gpu_accel > solver(network);
+
+	std::vector< std::pair< std::vector<float>, std::vector<float> > > list;
+	list.push_back(std::make_pair(std::vector<float>{1, 1}, std::vector<float>{-1}));
+	...
+	
+	solver.training<mtl::Backpropagation_Gpu_Accel>(0.15, list); //gpe acceleration algorithm
+  
   return 0;
 }
  ```
