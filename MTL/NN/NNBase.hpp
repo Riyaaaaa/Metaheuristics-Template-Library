@@ -10,14 +10,17 @@
 #define __MTL_Development__NNBase__
 
 #include<cmath>
-#include<amp.h>
-#include<amp_math.h>
 #include <array>
 #include <utility>
 #include <fstream>
 #include "Utility.hpp"
-#include "../Structure.h"
-#include "../configuration.h"
+#include "../Common/Structure.h"
+#include "../Common/configuration.h"
+
+#ifdef GPU_ACCELERATION
+#include<amp.h>
+#include<amp_math.h>
+#endif
 
 LIB_SCOPE_BEGIN()
 
@@ -48,7 +51,7 @@ public:
     std::array<float,_NEXT_LAYER_SIZE> weight;
     
     template<class F>
-    double output(F&& f);
+    double output(F&& f) const;
     
     template<std::size_t PREV_LAYER_SIZE,std::size_t _iSize>
     double input(const std::array<Unit<PREV_LAYER_SIZE> , _iSize>& surface);
@@ -58,9 +61,10 @@ public:
 private:
     float _status;
 };
+
 template<std::size_t _NEXT_LAYER_SIZE>
 template<class F>
-double Unit<_NEXT_LAYER_SIZE>::output(F&& f){
+double Unit<_NEXT_LAYER_SIZE>::output(F&& f) const {
     return f(_status+bias);
 }
 
@@ -106,6 +110,7 @@ double Unit_Dy_Litteral::output(F&& f) {
 	return f(_status + bias);
 }
 
+#ifdef GPU_ACCELERATION
 template<std::size_t WEIGHT_SIZE>
 class Unit_Dy_Amp{
 	friend FeedForward_Amp<WEIGHT_SIZE>;
@@ -182,6 +187,7 @@ template<class F>
 float Map_Amp<FilterSize>::output(F&& f)const{
 	return std::accumulate(map.begin(), map.end(), 0.0f);
 }
+#endif
 
 /* Feed forward perceptron class */
 /* This is the Perceptron model that does not have the recursive structure. */
@@ -199,6 +205,9 @@ public:
 	typedef STATIC tag;
 
 	static constexpr std::size_t LAYER_SIZE = std::tuple_size<structure>::value;
+    
+    template<class ActivationObject>
+    using Calc_Func = calcSurface<FeedForward, ActivationObject>;
     
     structure network;
     
@@ -240,13 +249,13 @@ auto FeedForward<_First,_Last,Args...>::layerBackwordIterator()
 
 class FeedForward_Dy{
 public:
+    typedef unsigned int size_t;
 	//Structure of network determined at the runtime
     typedef std::vector<std::vector<Unit_Dy>> structure;
 	typedef Unit_Dy Unit_t;
 	typedef DYNAMIC tag;
-	typedef std::vector<size_t> struct_t;
-	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)
-	typedef unsigned int size_t;
+    typedef std::vector<size_t> struct_t;
+	//C++ AMP-Restricted Function is not allow std::size_t(unsigned long)	
 
 	template<class ActivationObject>
 	using Calc_Func = calcSurface<FeedForward_Dy, ActivationObject>;
@@ -361,6 +370,8 @@ std::vector<Unit_Dy>& FeedForward_Dy::layerForwardIterator(size_t layer_index,si
 std::vector<Unit_Dy>& FeedForward_Dy::layerBackwordIterator(size_t layer_index,size_t unit_index){
 	return network[layer_index-1];
 }
+
+#ifdef GPU_ACCELERATION
 
 template<std::size_t W_SIZE>
 class FeedForward_Amp {
@@ -678,6 +689,8 @@ struct calcConvolution {
 	}
 };
 
+#endif
+
 template<class NetworkStruct, class ActivationObject>
 struct _calcSurface<NetworkStruct,ActivationObject,DYNAMIC> {
 	ActivationObject ao;
@@ -696,6 +709,8 @@ struct _calcSurface<NetworkStruct,ActivationObject,DYNAMIC> {
 		return sum;
 	}
 };
+
+#ifdef GPU_ACCELERATION
 
 template<class NetworkStruct, class ActivationObject>
 struct _calcSurface<NetworkStruct, ActivationObject,AMP> {
@@ -721,6 +736,7 @@ struct _calcSurface<NetworkStruct, ActivationObject,AMP> {
 	}
 };
 
+#endif
 
 LIB_SCOPE_END()
 

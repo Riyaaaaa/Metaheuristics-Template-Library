@@ -11,7 +11,15 @@
 
 #include<utility>
 #include<tuple>
-#include"../configuration.h"
+#include<array>
+#include<vector>
+#include<list>
+#include<map>
+#include<deque>
+#include<set>
+#include<unordered_map>
+#include<unordered_set>
+#include"../Common/configuration.h"
 
 LIB_SCOPE_BEGIN()
 

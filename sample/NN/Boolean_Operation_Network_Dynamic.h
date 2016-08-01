@@ -45,7 +45,7 @@ void xor_nn_dy(){
     list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MAX, ActivationObject::RANGE_MIN}, std::vector<float>{ActivationObject::RANGE_MAX} ));
     list.push_back(std::make_pair( std::vector<float>{ActivationObject::RANGE_MIN, ActivationObject::RANGE_MIN}, std::vector<float>{ActivationObject::RANGE_MIN} ));
     
-    solver.training<mtl::Backpropagation>(0.15,list);
+    solver.training<mtl::Backpropagation>(list, 1000, 0.01);
     
     std::cout << "-------END--------" << std::endl;
     std::ofstream ofs("xor_result.csv");
