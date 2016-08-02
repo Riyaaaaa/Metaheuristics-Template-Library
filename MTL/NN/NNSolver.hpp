@@ -22,13 +22,12 @@
 
 LIB_SCOPE_BEGIN()
 
-
-
 template<class Layer, class Target_t>
 static double statusScanning(const Layer& layer, const Target_t& target){
     double RMSerror=0.0;
     for(int i=0; i<target.size() ; i++){
-		RMSerror += 0.5 * std::pow(fabs(layer[i] - target[i]),2);
+		RMSerror += 0.5 * std::pow(fabs(layer[i] - target[i]), 2);
+        std::cout << "target: " << target[i] << " layer[i]: " << layer[i] << std::endl;
     }
     return RMSerror;
 }
@@ -336,9 +335,9 @@ void _NNSolver<NetworkStruct,ActivationObject,DYNAMIC>::regulateWeight(const std
     typename NetworkStruct::template Calc_Func<ActivationObject> calculator;
     calculator(neural);
     
-    auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers()-1],target);
-    for(int i=neural.getNumberOfLayers()-2; i>=0; i--){
-        delta = _training_algorithm(neural.network[i],target,delta);
+    auto delta = _training_algorithm(neural.network[neural.getNumberOfLayers() - 1],target);
+    for(int i = neural.getNumberOfLayers() - 2; i >= 0; i--){
+        delta = _training_algorithm(neural.network[i], target, delta);
     }
 }
         

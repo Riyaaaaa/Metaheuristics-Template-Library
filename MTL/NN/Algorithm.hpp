@@ -33,7 +33,7 @@ struct no_activation_af : ActivationFunc<no_activation_af>{
 
 struct sigmoid_af : ActivationFunc<sigmoid_af>{
     static double activate(double input){ return 1 / (1. + exp(-input));}
-    static double activateDerivative(double input){ return input * (1 - input);}
+    static double activateDerivative(double input){ return activate(input) * (1 - activate(input));}
 	static constexpr float RANGE_MIN = 0;
 	static constexpr float RANGE_MAX = 1;
 };
@@ -175,9 +175,9 @@ struct _ErrorCorrection<Tuple,ActivationObject,DYNAMIC>{
         std::array<double,std::tuple_size<output_layer_t>::value> delta;
         
         for(std::size_t i=0; i<target.size() ; i++){
-            out = layer[i].getStatus();
-            //delta[i] = ao.activateDerivative(out) * (target[i] - out);
-            delta[i] = (out - target[i]);
+            out = layer[i].getStatus() + layer[i].bias;
+            delta[i] = ao.activateDerivative(out) * (target[i] - out);
+            //delta[i] = (out - target[i]);
             layer[i].bias -= _trate * delta[i];
         }
         
