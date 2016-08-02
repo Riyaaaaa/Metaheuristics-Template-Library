@@ -693,22 +693,25 @@ struct calcConvolution {
 
 template<class NetworkStruct, class ActivationObject>
 struct _calcSurface<NetworkStruct,ActivationObject,DYNAMIC> {
-	ActivationObject ao;
+	static ActivationObject ao;
 	void operator()(NetworkStruct& neural) {
 		for (int i = 1; i<neural.getNumberOfLayers(); i++) {
 			for (int j = 0; j<neural.getNumberOfUnits(i); j++) {
-				neural.network[i][j].setStatus(ao.activate(sigma(neural.layerBackwordIterator(i, j), j) + neural.network[i][j].bias));
+               neural.network[i][j].setStatus(ao.activate(sigma(neural.layerBackwordIterator(i, j), j) + neural.network[i][j].bias));
 			}
 		}
 	}
 	static double sigma(const std::vector<Unit_Dy>& input_layer, int unitid) {
 		double sum = 0;
 		for (auto& unit : input_layer) {
-			sum += unit.getStatus() * unit.weight[unitid] + unit.bias;
+            sum += unit.getStatus() * unit.weight[unitid] + unit.bias;
 		}
 		return sum;
 	}
 };
+
+template<class NetworkStruct, class ActivationObject>
+ActivationObject _calcSurface<NetworkStruct,ActivationObject,DYNAMIC>::ao;
 
 #ifdef GPU_ACCELERATION
 

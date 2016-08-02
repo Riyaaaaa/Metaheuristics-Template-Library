@@ -7,7 +7,7 @@
 //
 
 #ifndef MTL_Development_BOOLEAN_OP_DY_NN_h
-#define MTL_Development_BOLLEAN_OP_DY_NN_h
+#define MTL_Development_BOOLEAN_OP_DY_NN_h
 
 #include"NNSolver.hpp"
 #include<fstream>
@@ -34,7 +34,7 @@ void xor_nn_dy(){
     network_struct[1] = 4;
     network_struct[2] = 1;
 
-	typedef mtl::tanh_af ActivationObject;
+	typedef mtl::sigmoid_af ActivationObject;
     
     mtl::NNSolver< mtl::FeedForward_Dy, ActivationObject > solver(network_struct);
     solver.setNetworkStruct(network_struct);
@@ -48,7 +48,7 @@ void xor_nn_dy(){
     solver.training<mtl::Backpropagation>(list, 1000, 0.01);
     
     std::cout << "-------END--------" << std::endl;
-    std::ofstream ofs("xor_result.csv");
+    std::ofstream ofs("/Users/ono/xor_result.csv");
     ofs << "x," << "y," << "z" << std::endl;
     for(float x=-1.0; x<=1.0; x += 0.02){
         for(float y=-1.0; y<=1.0; y += 0.02){

@@ -76,19 +76,23 @@ void or_nn(){
 
 void xor_nn(){
     
-    mtl::NNSolver< mtl::FeedForward<2,1,4>,mtl::tanh_af > solver;
+    typedef mtl::sigmoid_af AO;
+    mtl::NNSolver<mtl::FeedForward<2,1,4>, AO> solver;
     
-    std::vector< std::pair< std::array<double,2>, std::array<double,1> > > list;
-    list.push_back(std::make_pair( std::array<double,2>{1,1}, std::array<double,1>{-1} ));
-    list.push_back(std::make_pair( std::array<double,2>{1,-1}, std::array<double,1>{1} ));
-    list.push_back(std::make_pair( std::array<double,2>{-1,1}, std::array<double,1>{1} ));
-    list.push_back(std::make_pair( std::array<double,2>{-1,-1}, std::array<double,1>{-1} ));
+    std::vector< std::pair< std::array<double, 2>, std::array<double, 1> > > list;
+    list.push_back(std::make_pair( std::array<double,2>{AO::RANGE_MAX, AO::RANGE_MAX}, std::array<double,1>{AO::RANGE_MIN} ));
+    list.push_back(std::make_pair( std::array<double,2>{AO::RANGE_MAX, AO::RANGE_MIN}, std::array<double,1>{AO::RANGE_MAX} ));
+    list.push_back(std::make_pair( std::array<double,2>{AO::RANGE_MIN,AO::RANGE_MAX}, std::array<double,1>{AO::RANGE_MAX} ));
+    list.push_back(std::make_pair( std::array<double,2>{AO::RANGE_MIN,AO::RANGE_MIN}, std::array<double,1>{AO::RANGE_MIN} ));
 
     
-    solver.training<mtl::Backpropagation>(list, 1000, 0.01);
+    solver.training<mtl::Backpropagation>(list, 1000, 0.15);
     
     std::cout << "-------END--------" << std::endl;
-    std::ofstream ofs("xor_result.csv");
+    std::ofstream ofs("/Users/ono/xor_result.csv");
+    if(!ofs.is_open()) {
+        return;
+    }
     ofs << "x," << "y," << "z" << std::endl;
     for(float x=-1.0; x<=1.0; x += 0.02){
         for(float y=-1.0; y<=1.0; y += 0.02){
